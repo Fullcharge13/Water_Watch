@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>수질·침수 통합 모니터링</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#070b12;--panel:#0d1520;--panel2:#111e2e;--border:#172134;
+  --c1:#00e5c0;--c2:#3b9eff;--warn:#ff8c42;--danger:#ff3b5c;
+  --ok:#00d97e;--txt:#c4d4e8;--muted:#2e4460;
+  --grade-a:#00d97e;--grade-b:#7fd900;--grade-c:#f5c400;
+  --grade-d:#ff8c42;--grade-e:#ff3b5c;--grade-f:#9b2fff;
+}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:radial-gradient(circle,rgba(0,229,192,.12) 1px,transparent 1px);
+  background-size:24px 24px;
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.06) 3px,rgba(0,0,0,.06) 4px);
+}
+
+/* ── 헤더 ── */
+header{
+  position:relative;z-index:10;
+  display:flex;align-items:center;gap:14px;
+  padding:0 24px;height:56px;
+  background:rgba(13,21,32,.95);border-bottom:1px solid var(--border);
+}
+.logo{font-family:'Space Mono',monospace;font-size:15px;font-weight:700;color:var(--c1);letter-spacing:2px}
+.logo em{color:var(--warn);font-style:normal}
+.h-sub{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px}
+.h-right{margin-left:auto;display:flex;gap:10px;align-items:center}
+.live-dot{width:8px;height:8px;background:var(--ok);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.h-time{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted)}
+
+/* ── 레이아웃 ── */
+.app{position:relative;z-index:1;display:grid;grid-template-columns:300px 1fr;height:calc(100vh - 56px)}
+
+/* ── 사이드바 ── */
+.sidebar{
+  background:var(--panel);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow-y:auto;
+}
+.sidebar::-webkit-scrollbar{width:3px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border)}
+
+.s-block{padding:16px;border-bottom:1px solid var(--border)}
+.s-label{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;margin-bottom:10px}
+
+/* 지역 선택 */
+.region-row{display:flex;gap:8px;margin-bottom:8px}
+select.px-sel{
+  flex:1;background:var(--bg);border:1px solid var(--border);color:var(--txt);
+  font-family:'Noto Sans KR',sans-serif;font-size:12px;padding:8px 10px;
+  outline:none;transition:border-color .2s;
+  clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);
+}
+select.px-sel:focus{border-color:var(--c1)}
+.btn-scan{
+  padding:8px 16px;background:var(--c1);border:none;color:var(--bg);
+  font-family:'Space Mono',monospace;font-size:11px;font-weight:700;letter-spacing:1px;
+  cursor:pointer;transition:opacity .15s;flex-shrink:0;
+  clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);
+}
+.btn-scan:hover{opacity:.8}
+
+/* 수질 등급 카드 */
+.grade-card{
+  background:var(--bg);border:1px solid var(--border);padding:14px;
+  clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);
+  display:flex;flex-direction:column;gap:10px;
+}
+.grade-header{display:flex;align-items:center;gap:10px}
+.grade-badge{
+  width:48px;height:48px;border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Space Mono',monospace;font-size:22px;font-weight:700;flex-shrink:0;
+}
+.grade-info{}
+.grade-river{font-size:13px;font-weight:700;margin-bottom:2px}
+.grade-name{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace}
+
+.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.metric{background:var(--panel2);padding:8px 10px;border-radius:2px}
+.metric .mk{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:.5px}
+.metric .mv{font-family:'Space Mono',monospace;font-size:14px;font-weight:700;margin-top:2px}
+.metric .mu{font-size:9px;color:var(--muted)}
+
+/* 침수 위험도 카드 */
+.risk-card{
+  background:var(--bg);border:1px solid var(--border);padding:14px;
+  clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);
+}
+.risk-gauge{margin:10px 0}
+.gauge-bg{height:8px;background:var(--panel2);border-radius:4px;overflow:hidden;margin-bottom:6px}
+.gauge-fill{height:8px;border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.risk-label-row{display:flex;justify-content:space-between;align-items:center}
+.risk-pct{font-family:'Space Mono',monospace;font-size:20px;font-weight:700}
+.risk-txt{font-size:11px;color:var(--muted)}
+
+.risk-factors{display:flex;flex-direction:column;gap:5px;margin-top:10px}
+.factor-row{display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:5px 8px;background:var(--panel2);border-radius:2px}
+.factor-k{color:var(--muted);font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.5px}
+.factor-bar{flex:1;height:3px;background:var(--border);border-radius:2px;margin:0 10px}
+.factor-fill{height:3px;border-radius:2px;transition:width .6s}
+.factor-v{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;min-width:40px;text-align:right}
+
+/* 경보 배너 */
+.alert-banner{
+  padding:10px 14px;font-size:12px;font-family:'Space Mono',monospace;
+  letter-spacing:.5px;display:flex;align-items:center;gap:8px;
+  clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);
+  animation:slideIn .3s ease;
+}
+@keyframes slideIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.alert-icon{width:10px;height:10px;border-radius:2px;flex-shrink:0;animation:blink2 1s step-end infinite}
+@keyframes blink2{0%,100%{opacity:1}50%{opacity:0}}
+
+/* 통계 하단 */
+.api-note{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.5px;line-height:1.8;padding:12px 16px}
+
+/* ── 메인 영역 ── */
+.main{display:flex;flex-direction:column;overflow:hidden}
+
+/* 탭 */
+.tabs{
+  display:flex;border-bottom:1px solid var(--border);
+  background:var(--panel);flex-shrink:0;
+}
+.tab{
+  flex:1;padding:12px 0;font-family:'Space Mono',monospace;font-size:10px;
+  letter-spacing:1px;color:var(--muted);border:none;background:none;
+  cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;
+}
+.tab.on{color:var(--c1);border-bottom-color:var(--c1)}
+.tab:hover:not(.on){color:var(--txt)}
+
+.view{flex:1;overflow:hidden;display:none}
+.view.on{display:flex;flex-direction:column}
+
+/* 수질 뷰 */
+.wq-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  gap:10px;padding:16px;overflow-y:auto;
+}
+.wq-card{
+  background:var(--panel);border:1px solid var(--border);padding:14px;
+  clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);
+  cursor:pointer;transition:border-color .15s;
+}
+.wq-card:hover{border-color:var(--c1)}
+.wq-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.wq-river{font-size:12px;font-weight:700}
+.wq-point{font-size:10px;color:var(--muted);margin-top:2px}
+.wq-badge{
+  font-family:'Space Mono',monospace;font-size:13px;font-weight:700;
+  width:32px;height:32px;border-radius:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.wq-bar-wrap{margin-top:8px}
+.wq-bar-label{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px;font-family:'Space Mono',monospace}
+.wq-bar-bg{height:5px;background:var(--bg);border-radius:3px;overflow:hidden}
+.wq-bar-fill{height:5px;border-radius:3px;transition:width 1s}
+.wq-trend{font-family:'Space Mono',monospace;font-size:9px;margin-top:6px}
+
+/* 침수 뷰 */
+.flood-main{flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+.flood-header-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat-card{
+  background:var(--panel);border:1px solid var(--border);padding:14px;
+  clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);
+}
+.stat-card .sc-k{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:6px}
+.stat-card .sc-v{font-family:'Space Mono',monospace;font-size:24px;font-weight:700;color:var(--c1)}
+.stat-card .sc-u{font-size:10px;color:var(--muted);margin-top:2px}
+
+/* 시간별 강수 차트 */
+.rain-chart-wrap{background:var(--panel);border:1px solid var(--border);padding:16px;
+  clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%)}
+.chart-title{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:12px}
+.bar-chart{display:flex;align-items:flex-end;gap:4px;height:80px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.bar-fill-wrap{flex:1;display:flex;align-items:flex-end;width:100%}
+.bar-fill{width:100%;border-radius:2px 2px 0 0;transition:height .8s;min-height:2px}
+.bar-lbl{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted)}
+.bar-val{font-family:'Space Mono',monospace;font-size:7px}
+
+/* 위험 지역 리스트 */
+.zone-list{background:var(--panel);border:1px solid var(--border);padding:16px;
+  clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%)}
+.zone-row{
+  display:flex;align-items:center;gap:10px;padding:8px 0;
+  border-bottom:1px solid var(--border);font-size:12px;
+}
+.zone-row:last-child{border:none}
+.zone-rank{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);width:20px;flex-shrink:0}
+.zone-name{flex:1;font-weight:500}
+.zone-bar{flex:1;height:4px;background:var(--bg);border-radius:2px;overflow:hidden}
+.zone-bar-fill{height:4px;border-radius:2px}
+.zone-risk{font-family:'Space Mono',monospace;font-size:11px;font-weight:700;min-width:40px;text-align:right}
+.zone-level{font-size:9px;padding:2px 7px;border-radius:2px;font-family:'Space Mono',monospace;letter-spacing:.5px;flex-shrink:0}
+
+/* ── 반응형 슬라이더 컨트롤 ── */
+.ctrl-panel{
+  background:var(--panel);border-top:1px solid var(--border);
+  padding:10px 16px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+  font-size:11px;color:var(--muted);flex-shrink:0;
+}
+.ctrl-item{display:flex;align-items:center;gap:8px}
+.ctrl-item label{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.5px;white-space:nowrap}
+input[type=range]{width:80px}
+.ctrl-val{font-family:'Space Mono',monospace;font-size:10px;color:var(--c1);min-width:36px}
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">WATER<em>_</em>WATCH</div>
+  <div class="h-sub">수질 등급 · 침수 위험 통합 모니터링</div>
+  <div class="h-right">
+    <div class="live-dot"></div>
+    <div class="h-time" id="clock">--:--:--</div>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- ── 사이드바 ── -->
+  <aside class="sidebar">
+
+    <!-- 지역 선택 -->
+    <div class="s-block">
+      <div class="s-label">// 지역 선택</div>
+      <div class="region-row">
+        <select class="px-sel" id="sido-sel" onchange="onSidoChange(this.value)">
+          <option value="">시/도</option>
+          <option value="한강">한강 수계 (서울·경기)</option>
+          <option value="낙동강">낙동강 수계 (경상)</option>
+          <option value="금강">금강 수계 (충청·전북)</option>
+          <option value="영산강">영산강 수계 (전남·광주)</option>
+          <option value="섬진강">섬진강 수계</option>
+        </select>
+        <button class="btn-scan" onclick="runScan()">SCAN</button>
+      </div>
+      <div id="alert-area"></div>
+    </div>
+
+    <!-- 수질 등급 -->
+    <div class="s-block">
+      <div class="s-label">// 방류 수질 등급</div>
+      <div class="grade-card" id="grade-card">
+        <div style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);text-align:center;padding:12px 0">
+          지역을 선택하세요
+        </div>
+      </div>
+    </div>
+
+    <!-- 침수 위험도 -->
+    <div class="s-block">
+      <div class="s-label">// 침수 위험도</div>
+      <div class="risk-card" id="risk-card">
+        <div style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);text-align:center;padding:12px 0">
+          지역을 선택하세요
+        </div>
+      </div>
+    </div>
+
+    <!-- API 안내 -->
+    <div class="api-note">
+      <p style="color:var(--c1);margin-bottom:4px">// 연동 API</p>
+      <p>■ 환경부 물환경정보시스템<br>&nbsp;&nbsp;water.nier.go.kr/openapi</p>
+      <p>■ 기상청 동네예보 조회서비스<br>&nbsp;&nbsp;data.go.kr (무료 인증키)</p>
+      <p>■ Open-Meteo (강수량 무료)<br>&nbsp;&nbsp;api.open-meteo.com</p>
+      <p style="margin-top:6px;color:var(--warn)">※ 데모: 공공 기준값 기반 시뮬레이션<br>실 서비스 시 API 키 발급 필요</p>
+    </div>
+  </aside>
+
+  <!-- ── 메인 ── -->
+  <div class="main">
+    <div class="tabs">
+      <button class="tab on" onclick="switchTab('wq',this)">수질 등급 맵</button>
+      <button class="tab" onclick="switchTab('flood',this)">침수 위험 대시보드</button>
+    </div>
+
+    <!-- 수질 등급 뷰 -->
+    <div class="view on" id="view-wq">
+      <div class="wq-grid" id="wq-grid"></div>
+    </div>
+
+    <!-- 침수 위험 뷰 -->
+    <div class="view" id="view-flood">
+      <div class="flood-main">
+        <div class="flood-header-cards">
+          <div class="stat-card">
+            <div class="sc-k">현재 강수량</div>
+            <div class="sc-v" id="sc-rain">--</div>
+            <div class="sc-u">mm/hr (현재 지점)</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-k">관로 부하율</div>
+            <div class="sc-v" id="sc-load">--</div>
+            <div class="sc-u">% (설계 용량 대비)</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-k">침수 위험 지점</div>
+            <div class="sc-v" id="sc-zone">--</div>
+            <div class="sc-u">개소 (주의 이상)</div>
+          </div>
+        </div>
+
+        <div class="rain-chart-wrap">
+          <div class="chart-title">// 시간별 강수량 예측 (Open-Meteo API 연동 포인트)</div>
+          <div class="bar-chart" id="rain-bar-chart"></div>
+        </div>
+
+        <div class="zone-list">
+          <div class="chart-title">// 위험 지점 순위 (관로 부하율 기준)</div>
+          <div id="zone-list"></div>
+        </div>
+      </div>
+
+      <div class="ctrl-panel">
+        <div class="ctrl-item">
+          <label>강수량 시뮬</label>
+          <input type="range" id="rain-sim" min="0" max="80" step="1" value="12" oninput="updateFlood(this.value)">
+          <span class="ctrl-val" id="rain-val">12 mm/h</span>
+        </div>
+        <div class="ctrl-item">
+          <label>관로 노후도</label>
+          <input type="range" id="age-sim" min="0" max="100" step="1" value="45" oninput="updateAge(this.value)">
+          <span class="ctrl-val" id="age-val">45%</span>
+        </div>
+        <div style="margin-left:auto;font-family:'Space Mono',monospace;font-size:9px;color:var(--muted)">
+          슬라이더로 실시간 위험도 시뮬레이션
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+//  수질 등급 기준 (환경부 BOD 기준, mg/L)
+//  출처: e-나라지표 수질현황
+// ══════════════════════════════════════════════════
+const GRADE_CRITERIA = [
+  {grade:'Ia', label:'매우좋음', bod_max:1,  color:'#00d97e', bg:'rgba(0,217,126,.15)'},
+  {grade:'Ib', label:'좋음',     bod_max:2,  color:'#7fd900', bg:'rgba(127,217,0,.15)'},
+  {grade:'II', label:'약간좋음', bod_max:3,  color:'#c8d900', bg:'rgba(200,217,0,.12)'},
+  {grade:'III',label:'보통',     bod_max:5,  color:'#f5c400', bg:'rgba(245,196,0,.12)'},
+  {grade:'IV', label:'약간나쁨', bod_max:8,  color:'#ff8c42', bg:'rgba(255,140,66,.12)'},
+  {grade:'V',  label:'나쁨',     bod_max:10, color:'#ff5a42', bg:'rgba(255,90,66,.12)'},
+  {grade:'VI', label:'매우나쁨', bod_max:999,color:'#ff3b5c', bg:'rgba(255,59,92,.12)'},
+];
+
+function getGrade(bod){
+  return GRADE_CRITERIA.find(g => bod <= g.bod_max) || GRADE_CRITERIA.at(-1);
+}
+
+// ── 수계별 대표 측정 지점 데이터 (환경부 수질측정망 기준값)
+const WATER_DATA = {
+  '한강': [
+    {river:'한강', point:'팔당 (상류)', bod:1.1, do:10.2, tn:2.8, tp:0.04, trend:'↓'},
+    {river:'한강', point:'한강대교 (중류)', bod:2.1, do:9.1, tn:4.2, tp:0.08, trend:'→'},
+    {river:'중랑천', point:'중랑천 합류부', bod:4.8, do:7.3, tn:8.1, tp:0.18, trend:'↑'},
+    {river:'탄천', point:'탄천 하류', bod:3.2, do:8.4, tn:5.6, tp:0.11, trend:'↓'},
+    {river:'안양천', point:'안양천 합류부', bod:5.9, do:6.8, tn:9.3, tp:0.22, trend:'→'},
+    {river:'한강', point:'강화 (하류)', bod:2.8, do:8.9, tn:3.5, tp:0.07, trend:'↓'},
+  ],
+  '낙동강': [
+    {river:'낙동강', point:'안동댐 하류', bod:1.4, do:10.5, tn:2.1, tp:0.03, trend:'↓'},
+    {river:'낙동강', point:'구미 (중류)', bod:2.6, do:9.3, tn:4.8, tp:0.09, trend:'→'},
+    {river:'낙동강', point:'물금 취수장', bod:2.0, do:9.7, tn:3.9, tp:0.07, trend:'↓'},
+    {river:'금호강', point:'금호강 합류부', bod:6.3, do:6.1, tn:10.2, tp:0.25, trend:'↑'},
+    {river:'낙동강', point:'밀양강 합류점', bod:3.1, do:8.6, tn:5.2, tp:0.12, trend:'→'},
+    {river:'낙동강', point:'을숙도 (하류)', bod:2.4, do:9.1, tn:4.1, tp:0.08, trend:'↓'},
+  ],
+  '금강': [
+    {river:'금강', point:'대청댐 하류', bod:0.9, do:11.2, tn:1.8, tp:0.02, trend:'↓'},
+    {river:'금강', point:'공주 (중류)', bod:1.8, do:10.1, tn:3.2, tp:0.05, trend:'↓'},
+    {river:'갑천', point:'갑천 합류부', bod:4.1, do:7.8, tn:7.2, tp:0.16, trend:'↑'},
+    {river:'금강', point:'부여 (하류)', bod:2.2, do:9.5, tn:4.0, tp:0.07, trend:'→'},
+    {river:'논산천', point:'논산천 하류', bod:7.2, do:5.9, tn:11.8, tp:0.31, trend:'↑'},
+    {river:'금강', point:'강경 (하구)', bod:2.9, do:8.8, tn:4.5, tp:0.09, trend:'→'},
+  ],
+  '영산강': [
+    {river:'영산강', point:'담양댐 하류', bod:1.2, do:10.8, tn:2.3, tp:0.03, trend:'↓'},
+    {river:'영산강', point:'광주 (중류)', bod:5.2, do:6.9, tn:8.8, tp:0.19, trend:'↑'},
+    {river:'황룡강', point:'황룡강 합류부', bod:6.8, do:6.2, tn:10.5, tp:0.27, trend:'↑'},
+    {river:'영산강', point:'나주 (하류)', bod:3.8, do:7.6, tn:6.3, tp:0.14, trend:'→'},
+    {river:'고막원천', point:'고막원천 합류', bod:4.5, do:7.1, tn:7.6, tp:0.17, trend:'→'},
+    {river:'영산강', point:'목포 (하구)', bod:4.1, do:7.4, tn:7.1, tp:0.16, trend:'→'},
+  ],
+  '섬진강': [
+    {river:'섬진강', point:'운암댐 하류', bod:0.7, do:11.5, tn:1.5, tp:0.02, trend:'↓'},
+    {river:'섬진강', point:'압록 (중류)', bod:1.1, do:10.9, tn:2.2, tp:0.03, trend:'↓'},
+    {river:'보성강', point:'보성강 합류부', bod:1.4, do:10.6, tn:2.6, tp:0.04, trend:'↓'},
+    {river:'섬진강', point:'구례 (하류)', bod:1.8, do:10.2, tn:3.0, tp:0.05, trend:'↓'},
+    {river:'섬진강', point:'광양만 (하구)', bod:2.3, do:9.4, tn:3.8, tp:0.07, trend:'→'},
+    {river:'순천만', point:'순천만 유입부', bod:3.6, do:8.1, tn:5.8, tp:0.13, trend:'↑'},
+  ],
+};
+
+// ── 침수 위험 지점 데이터 (시군구별)
+const FLOOD_ZONES_BY_BASIN = {
+  '한강': [
+    {name:'서울 관악구 신림동',   pipe_age:72, elev:'저지대', capacity_ratio:88},
+    {name:'서울 강서구 화곡동',   pipe_age:65, elev:'저지대', capacity_ratio:82},
+    {name:'서울 도봉구 창동',    pipe_age:58, elev:'중간',   capacity_ratio:74},
+    {name:'경기 부천시 원미구',  pipe_age:61, elev:'저지대', capacity_ratio:79},
+    {name:'서울 중랑구 면목동',  pipe_age:54, elev:'중간',   capacity_ratio:71},
+    {name:'경기 안양시 만안구',  pipe_age:49, elev:'중간',   capacity_ratio:66},
+  ],
+  '낙동강': [
+    {name:'부산 사상구 엄궁동',   pipe_age:68, elev:'저지대', capacity_ratio:91},
+    {name:'부산 사하구 하단동',   pipe_age:71, elev:'저지대', capacity_ratio:87},
+    {name:'경남 창원시 마산합포', pipe_age:62, elev:'해안',   capacity_ratio:80},
+    {name:'대구 달서구 월성동',  pipe_age:55, elev:'중간',   capacity_ratio:73},
+    {name:'경북 구미시 원평동',  pipe_age:48, elev:'중간',   capacity_ratio:67},
+    {name:'부산 강서구 명지동',  pipe_age:44, elev:'저지대', capacity_ratio:63},
+  ],
+  '금강': [
+    {name:'충남 천안시 쌍용동',  pipe_age:59, elev:'중간',   capacity_ratio:76},
+    {name:'대전 대덕구 대화동',  pipe_age:64, elev:'저지대', capacity_ratio:83},
+    {name:'충남 아산시 온양동',  pipe_age:51, elev:'중간',   capacity_ratio:70},
+    {name:'전북 군산시 조촌동',  pipe_age:67, elev:'저지대', capacity_ratio:85},
+    {name:'충북 청주시 사직동',  pipe_age:53, elev:'중간',   capacity_ratio:72},
+    {name:'전북 전주시 팔달동',  pipe_age:46, elev:'중간',   capacity_ratio:64},
+  ],
+  '영산강': [
+    {name:'광주 북구 운암동',    pipe_age:69, elev:'저지대', capacity_ratio:89},
+    {name:'전남 목포시 원산동',  pipe_age:73, elev:'해안',   capacity_ratio:92},
+    {name:'광주 광산구 월계동',  pipe_age:58, elev:'중간',   capacity_ratio:75},
+    {name:'전남 나주시 금계동',  pipe_age:52, elev:'저지대', capacity_ratio:71},
+    {name:'전남 담양군 담양읍',  pipe_age:44, elev:'중간',   capacity_ratio:62},
+    {name:'전남 장성군 장성읍',  pipe_age:41, elev:'중간',   capacity_ratio:58},
+  ],
+  '섬진강': [
+    {name:'전남 순천시 향동',    pipe_age:48, elev:'중간',   capacity_ratio:65},
+    {name:'전남 광양시 광양읍',  pipe_age:44, elev:'해안',   capacity_ratio:60},
+    {name:'전남 구례군 구례읍',  pipe_age:55, elev:'저지대', capacity_ratio:68},
+    {name:'전남 곡성군 곡성읍',  pipe_age:49, elev:'중간',   capacity_ratio:63},
+    {name:'경남 하동군 하동읍',  pipe_age:52, elev:'저지대', capacity_ratio:67},
+    {name:'경남 남해군 남해읍',  pipe_age:43, elev:'해안',   capacity_ratio:59},
+  ],
+};
+
+let currentBasin = null;
+let rainSim = 12, ageSim = 45;
+
+// ── 시계 ──
+function updateClock(){
+  const n = new Date();
+  document.getElementById('clock').textContent =
+    n.toLocaleTimeString('ko-KR',{hour12:false});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── 탭 전환 ──
+function switchTab(id, btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('view-'+id).classList.add('on');
+}
+
+// ── 시도 변경 ──
+function onSidoChange(val){
+  currentBasin = val || null;
+}
+
+// ── 스캔 실행 ──
+function runScan(){
+  if(!currentBasin){ alert('수계를 먼저 선택하세요'); return; }
+  renderGradeCard();
+  renderRiskCard();
+  renderWQGrid();
+  renderFloodDash();
+  renderAlerts();
+}
+
+// ── 수질 등급 사이드 카드 ──
+function renderGradeCard(){
+  const data = WATER_DATA[currentBasin];
+  const avg_bod = data.reduce((s,d)=>s+d.bod,0)/data.length;
+  const g = getGrade(avg_bod);
+  const worst = data.reduce((a,b)=>a.bod>b.bod?a:b);
+  const best  = data.reduce((a,b)=>a.bod<b.bod?a:b);
+
+  document.getElementById('grade-card').innerHTML = `
+    <div class="grade-header">
+      <div class="grade-badge" style="background:${g.bg};color:${g.color}">${g.grade}</div>
+      <div class="grade-info">
+        <div class="grade-river">${currentBasin} 수계 평균</div>
+        <div class="grade-name">${g.label} · BOD ${avg_bod.toFixed(1)} mg/L</div>
+      </div>
+    </div>
+    <div class="metrics-grid">
+      <div class="metric">
+        <div class="mk">평균 BOD</div>
+        <div class="mv" style="color:${g.color}">${avg_bod.toFixed(1)}</div>
+        <div class="mu">mg/L</div>
+      </div>
+      <div class="metric">
+        <div class="mk">측정 지점</div>
+        <div class="mv" style="color:var(--c2)">${data.length}</div>
+        <div class="mu">개소</div>
+      </div>
+      <div class="metric">
+        <div class="mk">최고점 (BOD↓)</div>
+        <div class="mv" style="color:var(--ok);font-size:11px">${best.point.split(' ')[0]}</div>
+        <div class="mu">${best.bod} mg/L</div>
+      </div>
+      <div class="metric">
+        <div class="mk">최저점 (BOD↑)</div>
+        <div class="mv" style="color:var(--danger);font-size:11px">${worst.point.split(' ')[0]}</div>
+        <div class="mu">${worst.bod} mg/L</div>
+      </div>
+    </div>`;
+}
+
+// ── 침수 위험도 사이드 카드 ──
+function renderRiskCard(){
+  const zones = FLOOD_ZONES_BY_BASIN[currentBasin];
+  const rain_factor = Math.min(rainSim / 50, 1);
+  const age_factor  = ageSim / 100;
+  const base_risk = zones.reduce((s,z)=>s+z.capacity_ratio,0)/zones.length/100;
+  const risk_pct = Math.min(Math.round((base_risk * 0.5 + rain_factor * 0.35 + age_factor * 0.15) * 100), 99);
+
+  let risk_color = '#00d97e', risk_label = '안전';
+  if(risk_pct>=80){risk_color='#ff3b5c';risk_label='위험'}
+  else if(risk_pct>=60){risk_color='#ff8c42';risk_label='주의'}
+  else if(risk_pct>=40){risk_color='#f5c400';risk_label='관찰'}
+
+  const factors = [
+    {k:'강수량',  v:Math.round(rain_factor*100), color:'#3b9eff'},
+    {k:'관로노후',v:ageSim,                     color:'#ff8c42'},
+    {k:'관로부하',v:Math.round(base_risk*100),  color:'#cc44ff'},
+  ];
+
+  document.getElementById('risk-card').innerHTML = `
+    <div class="risk-gauge">
+      <div class="gauge-bg"><div class="gauge-fill" style="width:${risk_pct}%;background:${risk_color}"></div></div>
+      <div class="risk-label-row">
+        <span class="risk-pct" style="color:${risk_color}">${risk_pct}%</span>
+        <span class="risk-txt">${risk_label}</span>
+      </div>
+    </div>
+    <div class="risk-factors">
+      ${factors.map(f=>`
+        <div class="factor-row">
+          <span class="factor-k">${f.k}</span>
+          <div class="factor-bar"><div class="factor-fill" style="width:${f.v}%;background:${f.color}"></div></div>
+          <span class="factor-v" style="color:${f.color}">${f.v}%</span>
+        </div>`).join('')}
+    </div>`;
+
+  document.getElementById('sc-rain').textContent  = rainSim;
+  document.getElementById('sc-load').textContent  = Math.round(base_risk*100 + rain_factor*15);
+  document.getElementById('sc-zone').textContent  = zones.filter(z=>z.capacity_ratio>=70).length;
+}
+
+// ── 경보 배너 ──
+function renderAlerts(){
+  const zones = FLOOD_ZONES_BY_BASIN[currentBasin];
+  const high = zones.filter(z=>z.capacity_ratio>=85);
+  const data  = WATER_DATA[currentBasin];
+  const bad   = data.filter(d=>d.bod>=5);
+  const el    = document.getElementById('alert-area');
+  let html = '';
+
+  if(rainSim>=30){
+    html+=`<div class="alert-banner" style="background:rgba(255,59,92,.1);border:1px solid var(--danger);color:var(--danger);margin-top:8px">
+      <div class="alert-icon" style="background:var(--danger)"></div>
+      침수 경보 — ${rainSim}mm/hr 강수
+    </div>`;
+  } else if(rainSim>=15){
+    html+=`<div class="alert-banner" style="background:rgba(255,140,66,.1);border:1px solid var(--warn);color:var(--warn);margin-top:8px">
+      <div class="alert-icon" style="background:var(--warn)"></div>
+      침수 주의 — ${rainSim}mm/hr 강수
+    </div>`;
+  }
+  if(bad.length>0){
+    html+=`<div class="alert-banner" style="background:rgba(255,140,66,.08);border:1px solid #aa6622;color:#aa8833;margin-top:6px">
+      <div class="alert-icon" style="background:#aa6622"></div>
+      수질 주의 — ${bad.length}개 지점 IV등급 이하
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
+// ── 수질 등급 그리드 ──
+function renderWQGrid(){
+  const data = WATER_DATA[currentBasin];
+  const grid = document.getElementById('wq-grid');
+  grid.innerHTML = data.map(d=>{
+    const g = getGrade(d.bod);
+    const bod_pct = Math.min(d.bod/10*100, 100);
+    return `<div class="wq-card">
+      <div class="wq-card-top">
+        <div>
+          <div class="wq-river">${d.river}</div>
+          <div class="wq-point">${d.point}</div>
+        </div>
+        <div class="wq-badge" style="background:${g.bg};color:${g.color}">${g.grade}</div>
+      </div>
+      <div class="wq-bar-wrap">
+        <div class="wq-bar-label"><span>BOD</span><span>${d.bod} mg/L</span></div>
+        <div class="wq-bar-bg"><div class="wq-bar-fill" style="width:${bod_pct}%;background:${g.color}"></div></div>
+      </div>
+      <div class="wq-bar-wrap" style="margin-top:6px">
+        <div class="wq-bar-label"><span>DO</span><span>${d.do} mg/L</span></div>
+        <div class="wq-bar-bg"><div class="wq-bar-fill" style="width:${Math.min(d.do/14*100,100)}%;background:var(--c2)"></div></div>
+      </div>
+      <div class="wq-trend" style="color:${d.trend==='↓'?'var(--ok)':d.trend==='↑'?'var(--danger)':'var(--muted)'}">
+        추세 ${d.trend}  T-N ${d.tn}  T-P ${d.tp}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── 침수 대시보드 ──
+function renderFloodDash(){
+  renderRainBarChart();
+  renderZoneList();
+}
+
+function renderRainBarChart(){
+  const hours = Array.from({length:12},(_,i)=>i);
+  const base = rainSim;
+  const vals = hours.map(h=>{
+    const noise = (Math.sin(h*1.5+2)*0.4+Math.cos(h*0.8)*0.3)*base*0.5;
+    return Math.max(0, Math.round(base + noise));
+  });
+  const maxV = Math.max(...vals, 1);
+
+  document.getElementById('rain-bar-chart').innerHTML = vals.map((v,i)=>{
+    const pct = Math.round(v/maxV*100);
+    const c = v>=30?'var(--danger)':v>=15?'var(--warn)':v>=5?'var(--c2)':'var(--muted)';
+    const hr = new Date();
+    hr.setHours(hr.getHours()+i);
+    const lbl = hr.getHours().toString().padStart(2,'0')+'h';
+    return `<div class="bar-col">
+      <div class="bar-fill-wrap">
+        <div class="bar-fill" style="height:${pct}%;background:${c};width:100%"></div>
+      </div>
+      <div class="bar-lbl">${lbl}</div>
+      <div class="bar-val" style="color:${c}">${v}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderZoneList(){
+  const zones = FLOOD_ZONES_BY_BASIN[currentBasin];
+  const rain_bonus = Math.round(rainSim/50*20);
+  const age_bonus  = Math.round(ageSim/100*10);
+  const sorted = [...zones]
+    .map(z=>({...z, score: Math.min(z.capacity_ratio + rain_bonus + age_bonus, 99)}))
+    .sort((a,b)=>b.score-a.score);
+
+  document.getElementById('zone-list').innerHTML = sorted.map((z,i)=>{
+    let lvColor='var(--muted)', lvLabel='정상', lvBg='rgba(60,80,100,.2)';
+    if(z.score>=80){lvColor='var(--danger)';lvLabel='위험';lvBg='rgba(255,59,92,.15)'}
+    else if(z.score>=65){lvColor='var(--warn)';lvLabel='주의';lvBg='rgba(255,140,66,.12)'}
+    else if(z.score>=50){lvColor='#f5c400';lvLabel='관찰';lvBg='rgba(245,196,0,.1)'}
+    return `<div class="zone-row">
+      <div class="zone-rank">${i+1}</div>
+      <div>
+        <div class="zone-name">${z.name}</div>
+        <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">
+          관로노후 ${z.pipe_age}년 · ${z.elev}</div>
+      </div>
+      <div class="zone-bar"><div class="zone-bar-fill" style="width:${z.score}%;background:${lvColor}"></div></div>
+      <div class="zone-risk" style="color:${lvColor}">${z.score}%</div>
+      <div class="zone-level" style="background:${lvBg};color:${lvColor};border:1px solid ${lvColor}44">${lvLabel}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── 슬라이더 ──
+function updateFlood(val){
+  rainSim = parseInt(val);
+  document.getElementById('rain-val').textContent = val + ' mm/h';
+  if(currentBasin){
+    renderRiskCard();
+    renderFloodDash();
+    renderAlerts();
+  }
+}
+function updateAge(val){
+  ageSim = parseInt(val);
+  document.getElementById('age-val').textContent = val + '%';
+  if(currentBasin){
+    renderRiskCard();
+    renderZoneList();
+    renderAlerts();
+  }
+}
+
+// 초기 그리드 (전체 평균)
+(function initWQGrid(){
+  const allBasins = Object.keys(WATER_DATA);
+  const grid = document.getElementById('wq-grid');
+  grid.innerHTML = `<div style="grid-column:1/-1;font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);padding:24px;text-align:center">
+    수계를 선택하고 SCAN을 누르면 수질 등급이 표시됩니다</div>`;
+})();
+</script>
+</body>
+</html>
