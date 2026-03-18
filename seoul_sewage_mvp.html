@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>서울 하수 경로 탐색기</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg:       #0a0e1a;
+    --panel:    #111827;
+    --border:   #1e2d45;
+    --accent:   #00d4ff;
+    --accent2:  #0066ff;
+    --warn:     #ff6b35;
+    --green:    #00e676;
+    --text:     #e2e8f0;
+    --muted:    #64748b;
+    --radius:   12px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    overflow-x: hidden;
+  }
+
+  /* ── 배경 격자 ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  header {
+    position: relative; z-index: 10;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 16px;
+    background: rgba(10,14,26,.85);
+    backdrop-filter: blur(12px);
+  }
+
+  .logo-mark {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 18px; font-weight: 700; color: #fff;
+    flex-shrink: 0;
+  }
+
+  header h1 {
+    font-size: 17px; font-weight: 700; letter-spacing: -.3px;
+  }
+  header h1 span {
+    font-size: 12px; font-weight: 300; color: var(--muted);
+    display: block; margin-top: 1px; letter-spacing: .5px;
+  }
+
+  .badge {
+    margin-left: auto;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px; color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 3px 8px; border-radius: 20px;
+    letter-spacing: 1px;
+  }
+
+  main {
+    position: relative; z-index: 1;
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 0;
+    height: calc(100vh - 81px);
+  }
+
+  /* ── 사이드 패널 ── */
+  .sidebar {
+    padding: 24px;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 20px;
+    background: var(--panel);
+  }
+
+  .section-title {
+    font-size: 10px; font-weight: 700; letter-spacing: 2px;
+    color: var(--muted); text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .input-group { display: flex; flex-direction: column; gap: 8px; }
+
+  .input-group label {
+    font-size: 13px; font-weight: 500; color: var(--text);
+  }
+
+  .input-row { display: flex; gap: 8px; }
+
+  input[type="text"] {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 11px 14px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+  input[type="text"]::placeholder { color: var(--muted); font-size: 13px; }
+
+  .btn {
+    padding: 11px 18px;
+    border: none; border-radius: var(--radius);
+    font-family: inherit; font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: all .2s; white-space: nowrap;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    color: #fff;
+  }
+  .btn-primary:hover { opacity: .85; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px; padding: 8px 14px;
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── 구 선택기 ── */
+  .gu-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .gu-btn {
+    padding: 7px 4px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all .15s;
+    text-align: center;
+  }
+  .gu-btn:hover { border-color: var(--accent); color: var(--text); }
+  .gu-btn.active { background: rgba(0,212,255,.12); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+  /* ── 경로 결과 카드 ── */
+  .result-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    display: none;
+  }
+  .result-card.visible { display: block; animation: fadeUp .3s ease; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .stp-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 20px;
+    font-size: 12px; font-weight: 700; letter-spacing: .5px;
+    margin-bottom: 14px;
+  }
+  .stp-jl { background: rgba(0,214,255,.15); color: var(--accent); border: 1px solid var(--accent); }
+  .stp-nj { background: rgba(0,230,118,.12); color: var(--green); border: 1px solid var(--green); }
+  .stp-sn { background: rgba(255,107,53,.12); color: var(--warn); border: 1px solid var(--warn); }
+  .stp-tc { background: rgba(147,112,219,.15); color: #a78bfa; border: 1px solid #a78bfa; }
+
+  /* ── 경로 스텝 ── */
+  .route-steps { display: flex; flex-direction: column; gap: 0; }
+  .step {
+    display: flex; align-items: flex-start; gap: 12px;
+    position: relative;
+  }
+  .step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 15px; top: 30px;
+    width: 2px; height: calc(100% - 4px);
+    background: var(--border);
+  }
+  .step-dot {
+    width: 30px; height: 30px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px; font-weight: 700;
+    flex-shrink: 0; z-index: 1;
+  }
+  .dot-home  { background: rgba(0,102,255,.2); border: 2px solid var(--accent2); color: var(--accent2); }
+  .dot-pipe  { background: rgba(100,116,139,.15); border: 2px solid var(--border); color: var(--muted); }
+  .dot-pump  { background: rgba(255,107,53,.15); border: 2px solid var(--warn); color: var(--warn); }
+  .dot-stp   { background: rgba(0,230,118,.15); border: 2px solid var(--green); color: var(--green); }
+
+  .step-info { padding: 5px 0 20px; }
+  .step-info strong { font-size: 13px; font-weight: 700; display: block; }
+  .step-info small  { font-size: 11px; color: var(--muted); margin-top: 2px; display: block; }
+
+  /* ── 처리장 상세 정보 ── */
+  .stp-detail {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .stat-item { background: var(--panel); border-radius: 8px; padding: 10px 12px; }
+  .stat-item .val { font-family: 'Space Mono', monospace; font-size: 16px; font-weight: 700; color: var(--accent); }
+  .stat-item .lbl { font-size: 10px; color: var(--muted); margin-top: 2px; letter-spacing: .5px; }
+
+  /* ── 지도 영역 ── */
+  .map-area {
+    position: relative;
+    background: #080d18;
+  }
+
+  #map-svg {
+    width: 100%; height: 100%;
+  }
+
+  .map-tooltip {
+    position: absolute;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .15s;
+    z-index: 100;
+  }
+  .map-tooltip.visible { opacity: 1; }
+
+  .map-legend {
+    position: absolute; bottom: 20px; left: 20px;
+    background: rgba(17,24,39,.9);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--text);
+  }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── 로딩 상태 ── */
+  .loading { text-align: center; padding: 20px; color: var(--muted); font-size: 13px; }
+
+  /* ── 에러 ── */
+  .error-msg {
+    background: rgba(255,107,53,.1);
+    border: 1px solid var(--warn);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--warn);
+    display: none;
+  }
+  .error-msg.visible { display: block; }
+
+  /* ── 애니메이션 파이프 ── */
+  @keyframes flowDash {
+    to { stroke-dashoffset: -30; }
+  }
+
+  .divider { border: none; border-top: 1px solid var(--border); }
+
+  /* ── 스크롤바 ── */
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">S</div>
+  <h1>서울 하수 경로 탐색기
+    <span>Seoul Sewage Route Simulator · MVP v1.0</span>
+  </h1>
+  <span class="badge">BETA</span>
+</header>
+
+<main>
+  <!-- ── 사이드바 ── -->
+  <aside class="sidebar">
+
+    <div>
+      <p class="section-title">내 위치 선택</p>
+      <div class="input-group">
+        <label>자치구 직접 선택</label>
+        <div class="gu-grid" id="gu-grid"></div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div>
+      <p class="section-title">또는 주소 입력</p>
+      <div class="input-group">
+        <div class="input-row">
+          <input type="text" id="addr-input" placeholder="예) 강남구 테헤란로 152">
+          <button class="btn btn-primary" id="search-btn" onclick="searchAddr()">검색</button>
+        </div>
+        <p style="font-size:11px;color:var(--muted)">* 카카오 주소 API 연동 (API KEY 발급 필요)</p>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="error-msg" id="error-msg"></div>
+
+    <div class="result-card" id="result-card">
+      <div id="stp-badge-wrap"></div>
+      <div class="route-steps" id="route-steps"></div>
+      <div class="stp-detail" id="stp-detail"></div>
+    </div>
+
+    <div style="margin-top:auto;padding-top:16px;border-top:1px solid var(--border)">
+      <p style="font-size:10px;color:var(--muted);line-height:1.8">
+        데이터 출처: 서울물재생시설공단(swr.or.kr) · 서울하수도과학관<br>
+        처리구역 기준: 자치구 단위 (행정구역 기준 매핑)<br>
+        <strong style="color:var(--accent)">MVP</strong> — 상세 관로 좌표 미포함
+      </p>
+    </div>
+  </aside>
+
+  <!-- ── 지도 영역 ── -->
+  <div class="map-area">
+    <svg id="map-svg" viewBox="0 0 600 680" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="glow-blue">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="glow-green">
+          <feGaussianBlur stdDeviation="4" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <marker id="arr-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#00d4ff" stroke-width="2"/>
+        </marker>
+        <marker id="arr-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#00e676" stroke-width="2"/>
+        </marker>
+        <marker id="arr-warn" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#ff6b35" stroke-width="2"/>
+        </marker>
+        <marker id="arr-purple" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#a78bfa" stroke-width="2"/>
+        </marker>
+      </defs>
+
+      <!-- 서울시 구 폴리곤 (단순화된 근사 좌표, SVG 뷰박스 기준) -->
+      <!-- 색상은 처리구역별로 구분 -->
+      <g id="gu-polygons"></g>
+      <g id="stp-nodes"></g>
+      <g id="route-arrows"></g>
+      <g id="gu-labels"></g>
+    </svg>
+
+    <div class="map-tooltip" id="tooltip"></div>
+
+    <div class="map-legend">
+      <p style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">처리구역</p>
+      <div class="legend-item"><div class="legend-dot" style="background:#00d4ff"></div>중랑물재생센터</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#00e676"></div>난지물재생센터</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ff6b35"></div>서남물재생센터</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>탄천물재생센터</div>
+    </div>
+  </div>
+</main>
+
+<div class="map-tooltip" id="tooltip2"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  핵심 데이터 — 서울시 자치구 → 물재생센터 매핑
+//  출처: 서울물재생시설공단 / 서울하수도과학관
+// ═══════════════════════════════════════════════════════════════
+const STP_MAP = {
+  '중랑': {
+    name: '중랑물재생센터',
+    key: 'jl',
+    color: '#00d4ff',
+    markerColor: '#00d4ff',
+    arrMarker: 'arr-blue',
+    location: '서울시 성동구 자동차시장3길 60',
+    capacity_tpd: 900000,
+    river: '중랑천 → 한강',
+    process: '고도처리 (A2O 공법)',
+    districts: ['종로','중구','성동','광진','동대문','중랑','성북','강북','도봉','노원'],
+    svgCenter: { x: 380, y: 160 },
+    badge: 'stp-jl'
+  },
+  '난지': {
+    name: '난지물재생센터',
+    key: 'nj',
+    color: '#00e676',
+    markerColor: '#00e676',
+    arrMarker: 'arr-green',
+    location: '서울시 마포구 하늘공원로 108',
+    capacity_tpd: 1000000,
+    river: '한강',
+    process: '고도처리 (A2O 공법)',
+    districts: ['마포','서대문','용산','은평'],
+    svgCenter: { x: 155, y: 215 },
+    badge: 'stp-nj'
+  },
+  '서남': {
+    name: '서남물재생센터',
+    key: 'sn',
+    color: '#ff6b35',
+    markerColor: '#ff6b35',
+    arrMarker: 'arr-warn',
+    location: '서울시 강서구 양천로 504',
+    capacity_tpd: 1300000,
+    river: '한강',
+    process: '고도처리 (A2O+BNR)',
+    districts: ['관악','강서','구로','금천','동작','영등포','양천'],
+    svgCenter: { x: 150, y: 460 },
+    badge: 'stp-sn'
+  },
+  '탄천': {
+    name: '탄천물재생센터',
+    key: 'tc',
+    color: '#a78bfa',
+    markerColor: '#a78bfa',
+    arrMarker: 'arr-purple',
+    location: '서울시 성남시 중원구 양지동',
+    capacity_tpd: 1000000,
+    river: '탄천 → 한강',
+    process: '고도처리 (A2O 공법)',
+    districts: ['강남','서초','송파','강동'],
+    svgCenter: { x: 430, y: 500 },
+    badge: 'stp-tc'
+  }
+};
+
+// 구→처리장 역방향 매핑 생성
+const GU_TO_STP = {};
+Object.entries(STP_MAP).forEach(([stpKey, stp]) => {
+  stp.districts.forEach(gu => { GU_TO_STP[gu] = stpKey; });
+});
+
+// 처리 단계 설명
+const PIPE_STAGES = [
+  { id: 'home',     label: '발생원 (가구)',      desc: '생활하수·오물 발생',            dotClass: 'dot-home' },
+  { id: 'branch',   label: '가지관로',            desc: '건물 → 소블록 수집',           dotClass: 'dot-pipe' },
+  { id: 'lateral',  label: '지선관로',            desc: '블록 단위 합류',               dotClass: 'dot-pipe' },
+  { id: 'submain',  label: '간선관로 (차집관)',   desc: '하천변 차집관 → 간선 이송',    dotClass: 'dot-pipe' },
+  { id: 'pump',     label: '펌프장',              desc: '압력 보강 후 처리장 이송',     dotClass: 'dot-pump' },
+  { id: 'stp',      label: '',                    desc: '1차·2차·고도처리 후 한강 방류', dotClass: 'dot-stp'  },
+];
+
+// ═══════════════════════════════════════════════════════════════
+//  NetworkX-style 그래프 (순수 JS — 서버 불필요)
+// ═══════════════════════════════════════════════════════════════
+class DiGraph {
+  constructor() { this.adj = {}; }
+  addNode(id, data = {}) {
+    if (!this.adj[id]) this.adj[id] = { edges: [], data };
+  }
+  addEdge(src, dst, data = {}) {
+    this.addNode(src); this.addNode(dst);
+    this.adj[src].edges.push({ dst, data });
+  }
+  shortestPath(src, dst) {
+    const queue = [[src]], visited = new Set([src]), prev = {};
+    while (queue.length) {
+      const path = queue.shift();
+      const node = path[path.length - 1];
+      if (node === dst) return path;
+      for (const { dst: next } of (this.adj[node]?.edges || [])) {
+        if (!visited.has(next)) {
+          visited.add(next);
+          prev[next] = node;
+          queue.push([...path, next]);
+        }
+      }
+    }
+    return null;
+  }
+}
+
+function buildSeoulGraph(guName) {
+  const stpKey = GU_TO_STP[guName];
+  if (!stpKey) return null;
+  const stp = STP_MAP[stpKey];
+  const G = new DiGraph();
+
+  const HOME   = `${guName}_가구`;
+  const BRANCH = `${guName}_가지관로`;
+  const LATER  = `${guName}_지선관로`;
+  const SUBMAIN= `${guName}_차집관로`;
+  const PUMP   = `${stpKey}_펌프장`;
+  const STP    = stp.name;
+
+  G.addEdge(HOME,   BRANCH, { type: 'branch'  });
+  G.addEdge(BRANCH, LATER,  { type: 'lateral' });
+  G.addEdge(LATER,  SUBMAIN,{ type: 'submain' });
+  G.addEdge(SUBMAIN,PUMP,   { type: 'pump'    });
+  G.addEdge(PUMP,   STP,    { type: 'stp'     });
+
+  return { G, path: [HOME, BRANCH, LATER, SUBMAIN, PUMP, STP], stpKey, stp };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  UI — 자치구 선택 버튼 렌더
+// ═══════════════════════════════════════════════════════════════
+const ALL_GU = [
+  '강남','강동','강북','강서','관악',
+  '광진','구로','금천','노원','도봉',
+  '동대문','동작','마포','서대문','서초',
+  '성동','성북','송파','양천','영등포',
+  '용산','은평','종로','중구','중랑'
+];
+
+function initGuGrid() {
+  const grid = document.getElementById('gu-grid');
+  ALL_GU.forEach(gu => {
+    const btn = document.createElement('button');
+    btn.className = 'gu-btn';
+    btn.textContent = gu + '구';
+    btn.dataset.gu = gu;
+    btn.onclick = () => selectGu(gu, btn);
+    grid.appendChild(btn);
+  });
+}
+
+function selectGu(guName, btn) {
+  document.querySelectorAll('.gu-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  runSimulation(guName);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  시뮬레이션 실행
+// ═══════════════════════════════════════════════════════════════
+function runSimulation(guName) {
+  const result = buildSeoulGraph(guName);
+  if (!result) {
+    showError(`'${guName}' 구역 데이터를 찾을 수 없습니다.`);
+    return;
+  }
+  hideError();
+  const { path, stpKey, stp } = result;
+  renderResult(guName, path, stpKey, stp);
+  highlightMap(guName, stpKey, stp);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  결과 렌더링
+// ═══════════════════════════════════════════════════════════════
+function renderResult(guName, path, stpKey, stp) {
+  const card = document.getElementById('result-card');
+  card.className = 'result-card visible';
+
+  // 처리장 배지
+  document.getElementById('stp-badge-wrap').innerHTML = `
+    <div class="stp-badge ${stp.badge}">
+      ● ${stp.name}
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+      ${guName}구 하수의 최종 처리 경로
+    </p>
+  `;
+
+  // 스텝 렌더
+  const stepsEl = document.getElementById('route-steps');
+  const nodeLabels = [
+    `${guName}구 가구·건물`,
+    `${guName}구 가지관로`,
+    `${guName}구 지선관로`,
+    `${guName}구 차집관로`,
+    `${stpKey} 권역 펌프장`,
+    stp.name,
+  ];
+  const descs = PIPE_STAGES.map(s => s.desc);
+  descs[5] = `${stp.process} → ${stp.river} 방류`;
+
+  stepsEl.innerHTML = PIPE_STAGES.map((stage, i) => `
+    <div class="step">
+      <div class="step-dot ${stage.dotClass}">${i + 1}</div>
+      <div class="step-info">
+        <strong>${nodeLabels[i]}</strong>
+        <small>${descs[i]}</small>
+      </div>
+    </div>
+  `).join('');
+
+  // 처리장 통계
+  document.getElementById('stp-detail').innerHTML = `
+    <div class="stat-item">
+      <div class="val">${(stp.capacity_tpd / 10000).toFixed(0)}만</div>
+      <div class="lbl">일 처리용량 (톤/일)</div>
+    </div>
+    <div class="stat-item">
+      <div class="val">${stp.districts.length}개구</div>
+      <div class="lbl">관할 자치구 수</div>
+    </div>
+    <div class="stat-item" style="grid-column:1/-1">
+      <div class="val" style="font-size:12px">${stp.river}</div>
+      <div class="lbl">최종 방류 하천</div>
+    </div>
+    <div class="stat-item" style="grid-column:1/-1">
+      <div class="val" style="font-size:11px">${stp.location}</div>
+      <div class="lbl">시설 위치</div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  지도 SVG — 서울시 구 근사 폴리곤 렌더
+//  (실제 GIS Shapefile 없이 행정구역 근사 배치)
+// ═══════════════════════════════════════════════════════════════
+const GU_POSITIONS = {
+  '종로':   { x: 262, y: 185, w: 68, h: 55 },
+  '중구':   { x: 285, y: 240, w: 52, h: 48 },
+  '용산':   { x: 242, y: 285, w: 62, h: 55 },
+  '성동':   { x: 340, y: 250, w: 60, h: 55 },
+  '광진':   { x: 400, y: 255, w: 58, h: 55 },
+  '동대문': { x: 318, y: 195, w: 58, h: 58 },
+  '중랑':   { x: 404, y: 195, w: 58, h: 60 },
+  '성북':   { x: 310, y: 138, w: 68, h: 60 },
+  '강북':   { x: 340, y: 82,  w: 62, h: 58 },
+  '도봉':   { x: 360, y: 28,  w: 62, h: 58 },
+  '노원':   { x: 422, y: 55,  w: 70, h: 72 },
+  '은평':   { x: 175, y: 100, w: 72, h: 72 },
+  '서대문': { x: 195, y: 170, w: 68, h: 58 },
+  '마포':   { x: 162, y: 228, w: 72, h: 62 },
+  '양천':   { x: 98,  y: 350, w: 65, h: 62 },
+  '강서':   { x: 72,  y: 285, w: 72, h: 68 },
+  '구로':   { x: 122, y: 415, w: 65, h: 62 },
+  '금천':   { x: 162, y: 476, w: 58, h: 58 },
+  '영등포': { x: 168, y: 345, w: 70, h: 65 },
+  '동작':   { x: 228, y: 390, w: 68, h: 65 },
+  '관악':   { x: 228, y: 454, w: 70, h: 65 },
+  '서초':   { x: 285, y: 430, w: 78, h: 78 },
+  '강남':   { x: 358, y: 385, w: 78, h: 78 },
+  '송파':   { x: 430, y: 400, w: 78, h: 75 },
+  '강동':   { x: 452, y: 318, w: 68, h: 82 },
+};
+
+function initMap() {
+  const polySVG = document.getElementById('gu-polygons');
+  const labelSVG = document.getElementById('gu-labels');
+  const stpSVG   = document.getElementById('stp-nodes');
+
+  // 구 직사각형 렌더
+  ALL_GU.forEach(gu => {
+    const pos = GU_POSITIONS[gu];
+    if (!pos) return;
+    const stpKey = GU_TO_STP[gu];
+    const stp = stpKey ? STP_MAP[stpKey] : null;
+    const fillColor = stp ? stp.color : '#334155';
+
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', pos.x); rect.setAttribute('y', pos.y);
+    rect.setAttribute('width', pos.w); rect.setAttribute('height', pos.h);
+    rect.setAttribute('rx', '6');
+    rect.setAttribute('fill', fillColor);
+    rect.setAttribute('fill-opacity', '0.18');
+    rect.setAttribute('stroke', fillColor);
+    rect.setAttribute('stroke-opacity', '0.5');
+    rect.setAttribute('stroke-width', '1');
+    rect.setAttribute('data-gu', gu);
+    rect.style.cursor = 'pointer';
+    rect.style.transition = 'fill-opacity .2s';
+    rect.addEventListener('mouseenter', e => {
+      rect.setAttribute('fill-opacity', '0.4');
+      showTooltip(gu, stpKey, e);
+    });
+    rect.addEventListener('mousemove', e => moveTooltip(e));
+    rect.addEventListener('mouseleave', () => {
+      rect.setAttribute('fill-opacity', '0.18');
+      hideTooltip();
+    });
+    rect.addEventListener('click', () => {
+      const btn = document.querySelector(`.gu-btn[data-gu="${gu}"]`);
+      if (btn) selectGu(gu, btn);
+    });
+    polySVG.appendChild(rect);
+
+    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    txt.setAttribute('x', pos.x + pos.w / 2);
+    txt.setAttribute('y', pos.y + pos.h / 2 + 1);
+    txt.setAttribute('text-anchor', 'middle');
+    txt.setAttribute('dominant-baseline', 'central');
+    txt.setAttribute('fill', fillColor);
+    txt.setAttribute('fill-opacity', '0.9');
+    txt.setAttribute('font-size', '10');
+    txt.setAttribute('font-family', 'Noto Sans KR, sans-serif');
+    txt.setAttribute('font-weight', '500');
+    txt.setAttribute('pointer-events', 'none');
+    txt.textContent = gu;
+    labelSVG.appendChild(txt);
+  });
+
+  // 물재생센터 노드
+  Object.entries(STP_MAP).forEach(([stpKey, stp]) => {
+    const { x, y } = stp.svgCenter;
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+    const outer = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    outer.setAttribute('cx', x); outer.setAttribute('cy', y);
+    outer.setAttribute('r', '14');
+    outer.setAttribute('fill', stp.color);
+    outer.setAttribute('fill-opacity', '0.2');
+    outer.setAttribute('stroke', stp.color);
+    outer.setAttribute('stroke-width', '1.5');
+
+    const inner = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    inner.setAttribute('cx', x); inner.setAttribute('cy', y);
+    inner.setAttribute('r', '6');
+    inner.setAttribute('fill', stp.color);
+
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('x', x); label.setAttribute('y', y + 24);
+    label.setAttribute('text-anchor', 'middle');
+    label.setAttribute('fill', stp.color);
+    label.setAttribute('font-size', '9');
+    label.setAttribute('font-family', 'Noto Sans KR, sans-serif');
+    label.setAttribute('font-weight', '700');
+    label.textContent = stpKey + '센터';
+
+    g.appendChild(outer);
+    g.appendChild(inner);
+    g.appendChild(label);
+    stpSVG.appendChild(g);
+  });
+}
+
+// ── 툴팁 ──
+function showTooltip(gu, stpKey, e) {
+  const t = document.getElementById('tooltip');
+  const stp = stpKey ? STP_MAP[stpKey] : null;
+  t.innerHTML = `<strong>${gu}구</strong><br>
+    <span style="color:${stp?.color || '#64748b'}">${stp?.name || '데이터 없음'}</span>`;
+  t.className = 'map-tooltip visible';
+  moveTooltip(e);
+}
+function moveTooltip(e) {
+  const t = document.getElementById('tooltip');
+  const map = document.querySelector('.map-area').getBoundingClientRect();
+  t.style.left = (e.clientX - map.left + 12) + 'px';
+  t.style.top  = (e.clientY - map.top  - 10) + 'px';
+}
+function hideTooltip() {
+  document.getElementById('tooltip').className = 'map-tooltip';
+}
+
+// ── 지도 경로 강조 ──
+function highlightMap(guName, stpKey, stp) {
+  // 모든 구 초기화
+  document.querySelectorAll('#gu-polygons rect').forEach(r => {
+    const rGu = r.getAttribute('data-gu');
+    const rStp = GU_TO_STP[rGu];
+    const rStpObj = rStp ? STP_MAP[rStp] : null;
+    r.setAttribute('fill-opacity', rGu === guName ? '0.65' : '0.12');
+    r.setAttribute('stroke-width', rGu === guName ? '2' : '1');
+    r.setAttribute('stroke-opacity', rGu === guName ? '1' : '0.35');
+  });
+
+  // 경로 화살표
+  const arrowSVG = document.getElementById('route-arrows');
+  arrowSVG.innerHTML = '';
+
+  const pos = GU_POSITIONS[guName];
+  if (!pos) return;
+
+  const srcX = pos.x + pos.w / 2;
+  const srcY = pos.y + pos.h / 2;
+  const { x: dstX, y: dstY } = stp.svgCenter;
+
+  const midX = (srcX + dstX) / 2 + (Math.random() - .5) * 40;
+  const midY = (srcY + dstY) / 2 - 30;
+
+  // 점선 흐름 애니메이션
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', `M${srcX},${srcY} Q${midX},${midY} ${dstX},${dstY}`);
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke', stp.color);
+  path.setAttribute('stroke-width', '2.5');
+  path.setAttribute('stroke-dasharray', '8 5');
+  path.setAttribute('marker-end', `url(#${stp.arrMarker})`);
+  path.setAttribute('opacity', '0.9');
+  path.style.animation = 'flowDash 1.2s linear infinite';
+
+  arrowSVG.appendChild(path);
+}
+
+// ── 주소 검색 (Kakao API 통합 포인트) ──
+function searchAddr() {
+  const addr = document.getElementById('addr-input').value.trim();
+  if (!addr) return;
+
+  // 간단한 구 이름 파싱 (MVP — 카카오 API 키 없이도 동작)
+  const matched = ALL_GU.find(gu => addr.includes(gu + '구') || addr.includes(gu));
+  if (matched) {
+    const btn = document.querySelector(`.gu-btn[data-gu="${matched}"]`);
+    if (btn) {
+      selectGu(matched, btn);
+      return;
+    }
+  }
+
+  // 카카오 주소 API 연동 (API KEY 발급 후 아래 주석 해제)
+  /*
+  const KAKAO_KEY = 'YOUR_KAKAO_REST_API_KEY';
+  fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(addr)}`, {
+    headers: { Authorization: `KakaoAK ${KAKAO_KEY}` }
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (!data.documents?.length) { showError('주소를 찾을 수 없습니다.'); return; }
+    const doc = data.documents[0];
+    const guName = doc.address?.region_2depth_name?.replace('구','');
+    if (guName && GU_TO_STP[guName]) {
+      const btn = document.querySelector(`.gu-btn[data-gu="${guName}"]`);
+      selectGu(guName, btn);
+    }
+  })
+  .catch(() => showError('주소 검색 중 오류가 발생했습니다.'));
+  */
+
+  showError(`'${addr}'에서 자치구를 인식하지 못했습니다. 구 버튼을 직접 선택하거나 "강남구", "서초구" 형식으로 입력해보세요.`);
+}
+
+// 엔터키 검색
+document.getElementById('addr-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') searchAddr();
+});
+
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.className = 'error-msg visible';
+}
+function hideError() {
+  document.getElementById('error-msg').className = 'error-msg';
+}
+
+// ── 초기화 ──
+initGuGrid();
+initMap();
+</script>
+</body>
+</html>
