@@ -1,0 +1,29 @@
+# Node modules
+node_modules/
+
+# Python cache
+__pycache__/
+
+# Environment variable files
+.env
+
+# IDE settings
+.idea/
+.vscode/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# API keys
+*.key
+*.env
+
+# Configuration files
+*.config
+
+# Local development files
+*.local
+
+# Sensitive data
+sensitive_data/
