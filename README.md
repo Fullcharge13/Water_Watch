@@ -1,50 +1,33 @@
 # 💧 Water_Watch
 
-> 전국 하수 경로 탐색 · 수질 등급 시각화 · 침수 위험 알림 통합 플랫폼  
+> 전국 하수 경로 탐색 · 수질 등급 시각화 · 침수 위험 알림 통합 플랫폼
 > 순수 정적 HTML — 서버 없음 · 호스팅 비용 $0
 
 [![Live Demo](https://img.shields.io/badge/Live-GitHub%20Pages-00e5c0?style=flat-square&logo=github)](https://Fullcharge13.github.io/Water_Watch)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 [![Cost](https://img.shields.io/badge/Hosting-$0%2Fmo-brightgreen?style=flat-square)](https://pages.github.com)
+[![Open-Meteo](https://img.shields.io/badge/강수량-Open--Meteo%20실시간-3b9eff?style=flat-square)](https://open-meteo.com)
 
 ---
 
 ## 📸 스크린샷
 
-| 전국 탐색기 | 수질·침수 대시보드 |
+| 수질 등급 맵 | 침수 위험 대시보드 |
 |---|---|
-| 픽셀 도트 맵 + 시도별 경로 탐색 | BOD 등급 시각화 + 강수 위험도 |
+| 5대 수계 BOD 등급 시각화 | 실시간 강수량 + 관로 노후도 위험 분석 |
 
 ---
 
 ## ✨ 주요 기능
 
-| 기능 | 파일 | 비용 |
-|------|------|------|
-| 전국 하수 경로 탐색 (230+ 시군구) | `index.html` | $0 |
-| 픽셀 도트 한반도 지도 | `sewage_national.html` | $0 |
-| 수질 등급 시각화 (5대 수계 BOD/DO/TN/TP) | `water_dashboard.html` | $0 |
-| 침수 위험 알림 (강수량 × 관로 노후도) | `water_dashboard.html` | $0 |
-| AI 교육 퀴즈 — 레벨별 문제 생성 | `seweredu_quiz.html` | ~$3/월 |
-
----
-
-## 🗂 프로젝트 구조
-
-```
-Water_Watch/
-├── index.html               # 메인 진입점 — 전국 하수 경로 탐색기
-├── water_dashboard.html     # 수질 등급 + 침수 위험 통합 대시보드
-├── sewage_national.html     # 전국 픽셀 도트 맵 (17개 시도)
-├── seoul_sewage_mvp.html    # 서울 특화 MVP
-├── seweredu_quiz.html       # AI 교육 퀴즈 (Claude API 연동)
-├── docs/
-│   ├── api_guide.md         # 공공 API 연동 가이드
-│   └── data_sources.md      # 데이터 출처 목록
-├── .gitignore
-├── LICENSE
-└── README.md
-```
+| 기능 | 파일 | 실데이터 여부 | 비용 |
+|------|------|--------------|------|
+| 수질·침수 통합 모니터링 대시보드 | `index.html` | 강수량 실시간 연동 | $0 |
+| 5대 수계 수질 등급 시각화 (BOD/DO/TN/TP) | `index.html` | 공공 기준값 시뮬레이션 | $0 |
+| 침수 위험 분석 (강수량 × 관로 노후도) | `index.html` | 강수량 실시간 연동 | $0 |
+| 전국 픽셀 도트 맵 (17개 시도) | `sewage_national.html` | - | $0 |
+| 서울 하수 경로 탐색기 | `seoul_sewage_mvp.html` | - | $0 |
+| AI 교육 퀴즈 — 레벨별 문제 생성 | `seweredu_quiz.html` | Claude API 연동 | ~$3/월 |
 
 ---
 
@@ -53,63 +36,157 @@ Water_Watch/
 ### 로컬 실행
 
 ```bash
-# 클론
-git clone https://github.com/your-username/Water_Watch.git
+# 저장소 클론
+git clone https://github.com/Fullcharge13/Water_Watch.git
 cd Water_Watch
 
-# 서버 없이 바로 열기
-open index.html
+# 서버 없이 바로 열기 (Windows)
+start index.html
 
-# 또는 간단한 로컬 서버
-python3 -m http.server 8000
-# → http://localhost:8000
+# 또는 Python 로컬 서버
+python -m http.server 8000
+# → 브라우저에서 http://localhost:8000 접속
 ```
 
-### API 키 설정 (선택)
+> **참고:** `index.html`은 Open-Meteo API를 자동으로 호출합니다. 인터넷 연결이 필요하며, API 키는 불필요합니다.
 
-각 HTML 파일 상단의 상수를 교체하면 실데이터로 전환됩니다.
+---
 
-```javascript
-// water_dashboard.html
-const KMA_KEY   = 'YOUR_기상청_API_KEY';   // 강수량 실시간
-const WQ_KEY    = 'YOUR_환경부_API_KEY';   // 수질 측정
-const KAKAO_KEY = 'YOUR_카카오_REST_KEY';  // 주소 → 좌표
+## 📖 사용 방법
 
-// seweredu_quiz.html
-const CLAUDE_API_KEY = 'YOUR_ANTHROPIC_KEY'; // AI 퀴즈
+### 1단계 — 수계 선택
+
+좌측 사이드바 상단 **// 지역 선택** 드롭다운에서 원하는 수계를 선택하세요.
+
+| 수계 | 대표 지역 |
+|------|----------|
+| 한강 수계 | 서울 · 경기 |
+| 낙동강 수계 | 경상도 · 부산 |
+| 금강 수계 | 충청도 · 전북 |
+| 영산강 수계 | 전남 · 광주 |
+| 섬진강 수계 | 전남 남부 · 경남 |
+
+### 2단계 — SCAN 버튼 클릭
+
+**SCAN** 버튼을 누르면 다음이 자동으로 실행됩니다.
+
+- Open-Meteo에서 해당 수계의 **실시간 강수량 데이터**를 불러옵니다 (API 키 불필요)
+- 좌측 사이드바에 **수질 등급 카드**와 **침수 위험도 게이지**가 표시됩니다
+- 강수량 슬라이더가 **현재 실측값(전 1시간 집계)으로 자동 설정**됩니다 (★ 표시)
+
+### 3단계 — 탭 전환
+
+상단 탭으로 두 가지 뷰를 전환할 수 있습니다.
+
+#### 수질 등급 맵 탭
+
+선택한 수계의 측정 지점별 수질 등급이 카드 형태로 표시됩니다.
+
+| 표시 항목 | 설명 |
+|----------|------|
+| 등급 배지 (Ia ~ VI) | 환경부 BOD 기준 수질 등급 |
+| BOD 바 | 생화학적 산소 요구량 (mg/L) — 낮을수록 좋음 |
+| DO 바 | 용존 산소량 (mg/L) — 높을수록 좋음 |
+| 추세 화살표 | ↓ 개선 중 · → 유지 · ↑ 악화 중 |
+
+**수질 등급 기준 (환경부 BOD 기준)**
+
+| 등급 | 상태 | BOD (mg/L) |
+|------|------|-----------|
+| Ia | 매우좋음 | 1 이하 |
+| Ib | 좋음 | 2 이하 |
+| II | 약간좋음 | 3 이하 |
+| III | 보통 | 5 이하 |
+| IV | 약간나쁨 | 8 이하 |
+| V | 나쁨 | 10 이하 |
+| VI | 매우나쁨 | 10 초과 |
+
+#### 침수 위험 대시보드 탭
+
+실시간 강수량 기반 침수 위험을 분석합니다.
+
+| 표시 항목 | 설명 |
+|----------|------|
+| 현재 강수량 | Open-Meteo 전 1시간 실측 집계값 (mm/hr) |
+| 관로 부하율 | 강수량 + 관로 노후도 반영 추정치 (%) |
+| 침수 위험 지점 | 주의 등급 이상인 위험 지점 수 (개소) |
+| 시간별 강수량 차트 | 전 6시간 + 향후 6시간 예보 (Open-Meteo 실시간) |
+| 위험 지점 순위 | 관로 부하율 기준 내림차순 정렬 |
+
+### 4단계 — 시뮬레이션 슬라이더 조정
+
+하단 컨트롤 패널의 슬라이더로 시나리오를 시뮬레이션할 수 있습니다.
+
+| 슬라이더 | 범위 | 설명 |
+|----------|------|------|
+| 강수량 시뮬 | 0 ~ 80 mm/h | 강수량에 따른 침수 위험 변화 확인 |
+| 관로 노후도 | 0 ~ 100% | 노후 관로 비율에 따른 위험 변화 확인 |
+
+> **★ 표시:** 강수량 슬라이더 값에 ★가 붙어 있으면 Open-Meteo 실측값으로 자동 설정된 상태입니다. 슬라이더를 드래그하면 수동 시뮬레이션으로 전환됩니다.
+
+### 경보 배너
+
+수계 선택 후 SCAN 시 조건에 따라 경보가 표시됩니다.
+
+| 배너 색상 | 조건 | 의미 |
+|----------|------|------|
+| 빨간색 | 강수량 ≥ 30 mm/hr | 침수 경보 |
+| 주황색 | 강수량 ≥ 15 mm/hr | 침수 주의 |
+| 황색 | BOD IV등급 지점 존재 | 수질 주의 |
+
+---
+
+## 📡 데이터 출처
+
+| 데이터 | 출처 | 실시간 여부 |
+|--------|------|------------|
+| 강수량 (시간별 예보·실측) | [Open-Meteo](https://open-meteo.com) | ✅ 실시간 (API 키 불필요) |
+| 수질 등급 (BOD/DO/TN/TP) | 환경부 수질측정망 공공 기준값 | ⚠️ 시뮬레이션 |
+| 침수 위험 지점·관로 노후도 | 공공하수처리시설 통계 기반 추정 | ⚠️ 시뮬레이션 |
+
+> **참고:** 수질 등급과 침수 지점 데이터는 환경부 공공 기준값을 기반으로 한 시뮬레이션입니다.
+> 실 서비스 운영 시 환경부 물환경정보시스템 API 키 발급이 필요합니다.
+
+---
+
+## 🗂 프로젝트 구조
+
 ```
-
-> API 키는 절대 커밋하지 마세요 — `.gitignore`에 `config.local.js` 등록 필요
+Water_Watch/
+├── index.html               # 메인 대시보드 — 수질·침수 통합 모니터링
+├── water_dashboard.html     # 수질 등급 + 침수 위험 대시보드 (구버전)
+├── sewage_national.html     # 전국 픽셀 도트 맵 (17개 시도)
+├── seoul_sewage_mvp.html    # 서울 특화 하수 경로 탐색기
+├── seweredu_quiz.html       # AI 교육 퀴즈 (Claude API 연동)
+├── src/
+│   └── main.py              # Python 데이터 검증 스크립트
+├── docs/
+│   ├── api_guide.md         # 공공 API 연동 가이드
+│   ├── data_sources.md      # 데이터 출처 목록
+│   └── superpowers/specs/   # 설계 문서
+├── .gitignore
+├── LICENSE
+└── README.md
+```
 
 ---
 
 ## 🔧 기술 스택
 
 - **Frontend** : 순수 HTML5 / CSS3 / Vanilla JS (프레임워크 없음)
+- **강수량 API** : Open-Meteo Forecast API (무료, API 키 불필요, CORS 허용)
 - **지도 렌더링** : Canvas API 자체 픽셀 도트 드로잉
-- **경로 탐색** : 순수 JS DiGraph BFS (NetworkX 로직 포팅)
 - **AI 퀴즈** : Anthropic Claude API (`claude-sonnet-4-20250514`)
 - **배포** : GitHub Pages (정적 파일, 무료)
 
 ---
 
-## 📡 연동 공공 데이터 API
-
-| 기관 | API | 용도 | 비용 |
-|------|-----|------|------|
-| 환경부 | 물환경정보시스템 수질측정망 | BOD·DO·TN·TP | 무료 |
-| 기상청 | 동네예보 조회서비스 | 강수량 실시간·예보 | 무료 |
-| Open-Meteo | Forecast API | 강수 예측 (키 불필요) | 무료 |
-| 한국환경공단 | 공공하수처리시설 현황 | 시설 위치·용량 | 무료 |
-| 카카오 | 주소 검색 API | 도로명→시군구 변환 | 월 300만 콜 무료 |
-
----
-
 ## 🗺 커버리지
 
-- 전국 **17개 시도** / **230개 이상 시군구**
 - **5대 수계** : 한강 · 낙동강 · 금강 · 영산강 · 섬진강
-- 서울 **4개 물재생센터** 관할구역 상세 매핑
+- 수계별 **6개 측정 지점** (총 30개소)
+- 수계별 **6개 침수 위험 지점** (총 30개소)
+- 전국 **17개 시도** 픽셀 맵 (`sewage_national.html`)
 
 ---
 
@@ -117,7 +194,8 @@ const CLAUDE_API_KEY = 'YOUR_ANTHROPIC_KEY'; // AI 퀴즈
 
 | 버전 | 날짜 | 주요 변경 |
 |------|------|-----------|
-| v1.0.0 | 2026-03 | 초기 릴리즈 — 전국 탐색기 + 수질·침수 대시보드 |
+| v1.1.0 | 2026-03 | Open-Meteo 실시간 강수량 연동 · 슬라이더 자동 설정 · 12시간 예보 차트 |
+| v1.0.0 | 2026-03 | 초기 릴리즈 — 수질 등급 시각화 + 침수 위험 시뮬레이션 |
 
 ---
 
@@ -130,15 +208,15 @@ git checkout -b feat/새기능명
 # 2. 수정 후 커밋
 git commit -m "feat: 설명"
 
-# 3. Pull Request
+# 3. Pull Request 생성
 ```
 
 ---
 
 ## 📄 라이선스
 
-MIT License — 공공데이터 기반, 자유롭게 활용 가능  
-데이터 출처: 환경부 · 한국환경공단 · 기상청 · 서울물재생시설공단
+MIT License — 공공데이터 기반, 자유롭게 활용 가능
+데이터 출처: 환경부 · 한국환경공단 · 기상청 · Open-Meteo
 
 ---
 
