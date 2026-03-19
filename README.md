@@ -27,7 +27,6 @@
 | 침수 위험 분석 (강수량 × 관로 노후도) | `index.html` | 강수량 실시간 연동 | $0 |
 | 전국 픽셀 도트 맵 (17개 시도) | `sewage_national.html` | - | $0 |
 | 서울 하수 경로 탐색기 | `seoul_sewage_mvp.html` | - | $0 |
-| AI 교육 퀴즈 — 레벨별 문제 생성 | `seweredu_quiz.html` | Claude API 연동 | ~$3/월 |
 
 ---
 
@@ -157,7 +156,6 @@ Water_Watch/
 ├── water_dashboard.html     # 수질 등급 + 침수 위험 대시보드 (구버전)
 ├── sewage_national.html     # 전국 픽셀 도트 맵 (17개 시도)
 ├── seoul_sewage_mvp.html    # 서울 특화 하수 경로 탐색기
-├── seweredu_quiz.html       # AI 교육 퀴즈 (Claude API 연동)
 ├── src/
 │   └── main.py              # Python 데이터 검증 스크립트
 ├── docs/
@@ -176,7 +174,6 @@ Water_Watch/
 - **Frontend** : 순수 HTML5 / CSS3 / Vanilla JS (프레임워크 없음)
 - **강수량 API** : Open-Meteo Forecast API (무료, API 키 불필요, CORS 허용)
 - **지도 렌더링** : Canvas API 자체 픽셀 도트 드로잉
-- **AI 퀴즈** : Anthropic Claude API (`claude-sonnet-4-20250514`)
 - **배포** : GitHub Pages (정적 파일, 무료)
 
 ---
