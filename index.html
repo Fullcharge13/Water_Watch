@@ -374,6 +374,71 @@ function getGrade(bod){
   return GRADE_CRITERIA.find(g => bod <= g.bod_max) || GRADE_CRITERIA.at(-1);
 }
 
+function getFloodRisk(ratio) {
+  if (ratio < 1.0) return {label:'안전', color:'#00d97e'};
+  if (ratio < 1.5) return {label:'관찰', color:'#f5c400'};
+  if (ratio < 2.5) return {label:'주의', color:'#ff8c42'};
+  return {label:'경보', color:'#ff3b5c'};
+}
+
+async function fetchBasinFlood(basin, lat, lon) {
+  const today = new Date();
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  const thirtyDaysAgo = new Date(today); thirtyDaysAgo.setDate(today.getDate() - 30);
+  const fmt = d => d.toISOString().slice(0, 10);
+
+  const forecastUrl = `https://flood-api.open-meteo.com/v1/flood?latitude=${lat}&longitude=${lon}&daily=river_discharge&forecast_days=7`;
+  const histUrl = `https://flood-api.open-meteo.com/v1/flood?latitude=${lat}&longitude=${lon}&daily=river_discharge&start_date=${fmt(thirtyDaysAgo)}&end_date=${fmt(yesterday)}`;
+
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10000);
+    const [fRes, hRes] = await Promise.all([
+      fetch(forecastUrl, {signal: ctrl.signal}),
+      fetch(histUrl, {signal: ctrl.signal})
+    ]);
+    clearTimeout(timer);
+
+    const fData = await fRes.json();
+    const hData = await hRes.json();
+
+    const discharge = fData.daily.river_discharge;
+    const dates = fData.daily.time;
+    const histValues = hData.daily.river_discharge.filter(v => v !== null);
+    const historicalMean = histValues.length
+      ? histValues.reduce((a, b) => a + b, 0) / histValues.length
+      : 0;
+
+    if (!historicalMean || historicalMean === 0) {
+      floodCache[basin] = null;
+      return;
+    }
+
+    const ratio = (discharge[0] ?? 0) / historicalMean;
+    const risk = getFloodRisk(ratio);
+
+    floodCache[basin] = {
+      dates,
+      discharge,
+      historicalMean: Math.round(historicalMean),
+      ratio: Math.round(ratio * 100) / 100,
+      label: risk.label,
+      color: risk.color
+    };
+  } catch (e) {
+    console.warn(`Flood fetch failed for ${basin}:`, e.message);
+    floodCache[basin] = null;
+  }
+}
+
+async function loadAllFloodData() {
+  await Promise.all(
+    Object.entries(BASIN_COORDS).map(([basin, {lat, lon}]) =>
+      fetchBasinFlood(basin, lat, lon)
+    )
+  );
+}
+
 // ── 수계별 대표 측정 지점 데이터 (환경부 수질측정망 기준값)
 const WATER_DATA = {
   '한강': [
