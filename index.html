@@ -692,6 +692,60 @@ function renderRainBarChart(){
   }).join('');
 }
 
+function renderDischargeChart() {
+  const el = document.getElementById('discharge-bar-chart');
+  if (!el) return;
+  const data = floodCache[currentBasin];
+  if (!data) {
+    el.innerHTML = '<div style="font-family:\'Space Mono\',monospace;font-size:11px;color:var(--muted);text-align:center;width:100%;padding:24px">데이터 없음</div>';
+    return;
+  }
+  const {discharge, historicalMean} = data;
+  const dayLabels = ['오늘','내일','+2일','+3일','+4일','+5일','+6일'];
+  const maxV = Math.max(...discharge.filter(v => v != null), 1);
+
+  el.innerHTML = discharge.map((v, i) => {
+    const val = v ?? 0;
+    const pct = Math.round(val / maxV * 100);
+    const dayRatio = val / historicalMean;
+    const {color} = getFloodRisk(dayRatio);
+    const todayStyle = i === 0 ? 'outline:1px solid var(--c1);' : '';
+    return `<div class="bar-col">
+      <div class="bar-fill-wrap">
+        <div class="bar-fill" style="height:${pct}%;background:${color};width:100%;${todayStyle}"></div>
+      </div>
+      <div class="bar-lbl">${dayLabels[i] ?? '+'+i+'일'}</div>
+      <div class="bar-val" style="color:${color}">${v != null ? Math.round(v) : '-'}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderRiskSummaryCard() {
+  const el = document.getElementById('discharge-summary');
+  if (!el) return;
+  const data = floodCache[currentBasin];
+  if (!data) {
+    el.innerHTML = '<div style="font-family:\'Space Mono\',monospace;font-size:11px;color:var(--muted);text-align:center;padding:12px 0">데이터 없음</div>';
+    return;
+  }
+  const {discharge, historicalMean, ratio, label, color} = data;
+  el.innerHTML = `
+    <div class="ds-row">
+      <span class="ds-key">현재 유량</span>
+      <span class="ds-val" style="color:${color}">${Math.round(discharge[0] ?? 0)} m³/s</span>
+    </div>
+    <div class="ds-row">
+      <span class="ds-key">평년 대비</span>
+      <span class="ds-val" style="color:${color}">${ratio.toFixed(1)}×
+        <span class="ds-badge" style="background:${color};color:#070b12;margin-left:8px">${label}</span>
+      </span>
+    </div>
+    <div class="ds-row">
+      <span class="ds-key">최근 30일 평균</span>
+      <span class="ds-val" style="color:var(--muted)">${historicalMean} m³/s</span>
+    </div>`;
+}
+
 
 // ── 슬라이더 ──
 function updateFlood(val){
