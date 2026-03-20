@@ -182,7 +182,8 @@ select.px-sel:focus{border-color:var(--c1)}
 /* 시간별 강수 차트 */
 .rain-chart-wrap{background:var(--panel);border:1px solid var(--border);padding:16px;
   clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%)}
-.chart-title{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:12px}
+.chart-title{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:6px}
+.chart-summary{font-size:12px;color:var(--txt);margin-bottom:10px;line-height:1.6}
 .bar-chart{display:flex;align-items:flex-end;gap:4px;height:80px}
 /* 하천 유량 패널 */
 .discharge-chart-wrap{background:var(--panel);border:1px solid var(--border);padding:16px;
@@ -298,27 +299,29 @@ input[type=range]{width:80px}
           <div class="stat-card">
             <div class="sc-k">현재 강수량</div>
             <div class="sc-v" id="sc-rain">--</div>
-            <div class="sc-u">mm/hr (현재 지점)</div>
+            <div class="sc-u">mm/hr · 시간당 강수량</div>
           </div>
           <div class="stat-card">
-            <div class="sc-k">복합 부하 지수</div>
+            <div class="sc-k">침수 위험도</div>
             <div class="sc-v" id="sc-load">--</div>
-            <div class="sc-u">% (하천·강수 기반)</div>
+            <div class="sc-u">% · 강수·하천·하수관 종합</div>
           </div>
           <div class="stat-card">
             <div class="sc-k">하천 위험 등급</div>
             <div class="sc-v" id="sc-zone">--</div>
-            <div class="sc-u">GloFAS 예보 기준</div>
+            <div class="sc-u">강 수위 예보 기반</div>
           </div>
         </div>
 
         <div class="rain-chart-wrap">
-          <div class="chart-title">// 시간별 강수량 예측 (Open-Meteo API 연동 포인트)</div>
+          <div class="chart-title">// 시간별 강수량 예측</div>
+          <div class="chart-summary" id="rain-summary">수계를 선택하고 SCAN을 누르면 강수 현황이 표시됩니다.</div>
           <div class="bar-chart" id="rain-bar-chart"></div>
         </div>
 
         <div class="discharge-chart-wrap">
-          <div class="chart-title">// 7일 하천 유량 예보 (Open-Meteo GloFAS)</div>
+          <div class="chart-title">// 이번 주 강 수위 예보 (7일)</div>
+          <div class="chart-summary" id="discharge-summary-text">수계를 선택하고 SCAN을 누르면 강 수위 예보가 표시됩니다.</div>
           <div class="bar-chart" id="discharge-bar-chart"></div>
         </div>
         <div class="discharge-summary" id="discharge-summary">
@@ -330,17 +333,17 @@ input[type=range]{width:80px}
 
       <div class="ctrl-panel">
         <div class="ctrl-item">
-          <label>강수량 시뮬</label>
+          <label>강수량 조절</label>
           <input type="range" id="rain-sim" min="0" max="80" step="1" value="12" oninput="updateFlood(this.value)">
           <span class="ctrl-val" id="rain-val">12 mm/h</span>
         </div>
         <div class="ctrl-item">
-          <label>관로 노후도</label>
+          <label>하수관 노후 비율</label>
           <input type="range" id="age-sim" min="0" max="100" step="1" value="45" oninput="updateAge(this.value)">
           <span class="ctrl-val" id="age-val">45%</span>
         </div>
         <div style="margin-left:auto;font-family:'Space Mono',monospace;font-size:9px;color:var(--muted)">
-          슬라이더로 실시간 위험도 시뮬레이션
+          "만약 비가 더 온다면?" 시나리오 조절
         </div>
       </div>
     </div>
@@ -372,6 +375,22 @@ const BASIN_COORDS = {
 
 function getGrade(bod){
   return GRADE_CRITERIA.find(g => bod <= g.bod_max) || GRADE_CRITERIA.at(-1);
+}
+
+function getRainSummary(mm) {
+  if (mm < 5)  return '현재 강수량은 낮은 수준으로, 침수 위험이 거의 없습니다.';
+  if (mm < 15) return '약한 비가 내리고 있습니다. 저지대 배수 상황을 확인하세요.';
+  if (mm < 30) return '상당한 비가 내리고 있습니다. 침수에 주의하세요.';
+  return '강한 비로 인한 침수 위험이 높습니다. 즉시 대피 여부를 확인하세요.';
+}
+
+function getDischargeSummary(data) {
+  if (!data) return '강 수위 데이터를 불러오지 못했습니다.';
+  const r = data.ratio;
+  if (r < 1.0) return '이번 주 강 수위는 평소보다 낮습니다. 안전한 상태입니다.';
+  if (r < 1.5) return '이번 주 강 수위는 평소 수준입니다. 지속 관찰이 필요합니다.';
+  if (r < 2.5) return `이번 주 강 수위가 평소보다 ${r.toFixed(1)}배 높습니다. 주의가 필요합니다.`;
+  return `이번 주 강 수위가 평소보다 ${r.toFixed(1)}배 높습니다. 즉각적인 대응이 필요합니다.`;
 }
 
 function getFloodRisk(ratio) {
@@ -681,6 +700,8 @@ function renderWQGrid(){
 
 
 function renderRainBarChart(){
+  const rainSummaryEl = document.getElementById('rain-summary');
+  if (rainSummaryEl) rainSummaryEl.textContent = getRainSummary(rainSim);
   const hours = Array.from({length:12},(_,i)=>i);
   const base = rainSim;
   const vals = hours.map(h=>{
@@ -709,6 +730,8 @@ function renderDischargeChart() {
   const el = document.getElementById('discharge-bar-chart');
   if (!el) return;
   const data = floodCache[currentBasin];
+  const summaryEl = document.getElementById('discharge-summary-text');
+  if (summaryEl) summaryEl.textContent = getDischargeSummary(data);
   if (!data) {
     el.innerHTML = '<div style="font-family:\'Space Mono\',monospace;font-size:11px;color:var(--muted);text-align:center;width:100%;padding:24px">데이터 없음</div>';
     return;
