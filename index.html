@@ -522,8 +522,17 @@ function runScan(){
   renderGradeCard();
   renderRiskCard();
   renderWQGrid();
-  renderFloodDash();
+  renderRainBarChart();
+  renderDischargeChart();
+  renderRiskSummaryCard();
   renderAlerts();
+
+  const fd = floodCache[currentBasin];
+  const scZone = document.getElementById('sc-zone');
+  if(scZone){
+    scZone.textContent = fd?.label ?? '--';
+    scZone.style.color = fd?.color ?? 'var(--c1)';
+  }
 }
 
 // ── 수질 등급 사이드 카드 ──
@@ -568,21 +577,26 @@ function renderGradeCard(){
 
 // ── 침수 위험도 사이드 카드 ──
 function renderRiskCard(){
-  const zones = FLOOD_ZONES_BY_BASIN[currentBasin];
   const rain_factor = Math.min(rainSim / 50, 1);
   const age_factor  = ageSim / 100;
-  const base_risk = zones.reduce((s,z)=>s+z.capacity_ratio,0)/zones.length/100;
-  const risk_pct = Math.min(Math.round((base_risk * 0.5 + rain_factor * 0.35 + age_factor * 0.15) * 100), 99);
+  const discharge_factor = floodCache[currentBasin]
+    ? Math.min(floodCache[currentBasin].ratio / 3, 1)
+    : 0.5;
+  const risk_pct = Math.min(
+    Math.round((discharge_factor * 0.5 + rain_factor * 0.35 + age_factor * 0.15) * 100),
+    99
+  );
 
   let risk_color = '#00d97e', risk_label = '안전';
   if(risk_pct>=80){risk_color='#ff3b5c';risk_label='위험'}
   else if(risk_pct>=60){risk_color='#ff8c42';risk_label='주의'}
   else if(risk_pct>=40){risk_color='#f5c400';risk_label='관찰'}
 
+
   const factors = [
-    {k:'강수량',  v:Math.round(rain_factor*100), color:'#3b9eff'},
-    {k:'관로노후',v:ageSim,                     color:'#ff8c42'},
-    {k:'관로부하',v:Math.round(base_risk*100),  color:'#cc44ff'},
+    {k:'강수량',  v: Math.round(rain_factor * 100),       color:'#3b9eff'},
+    {k:'관로노후', v: ageSim,                              color:'#ff8c42'},
+    {k:'하천수위', v: Math.round(discharge_factor * 100), color:'#00e5c0'},
   ];
 
   document.getElementById('risk-card').innerHTML = `
@@ -603,14 +617,13 @@ function renderRiskCard(){
     </div>`;
 
   document.getElementById('sc-rain').textContent  = rainSim;
-  document.getElementById('sc-load').textContent  = Math.round(base_risk*100 + rain_factor*15);
-  document.getElementById('sc-zone').textContent  = zones.filter(z=>z.capacity_ratio>=70).length;
+  document.getElementById('sc-load').textContent  = Math.round(discharge_factor * 100 + rain_factor * 15);
 }
 
 // ── 경보 배너 ──
 function renderAlerts(){
-  const zones = FLOOD_ZONES_BY_BASIN[currentBasin];
-  const high = zones.filter(z=>z.capacity_ratio>=85);
+  const floodRisk = floodCache[currentBasin];
+  const highFlood = floodRisk && floodRisk.ratio >= 1.5;
   const data  = WATER_DATA[currentBasin];
   const bad   = data.filter(d=>d.bod>=5);
   const el    = document.getElementById('alert-area');
@@ -753,7 +766,9 @@ function updateFlood(val){
   document.getElementById('rain-val').textContent = val + ' mm/h';
   if(currentBasin){
     renderRiskCard();
-    renderFloodDash();
+    renderRainBarChart();
+    renderDischargeChart();
+    renderRiskSummaryCard();
     renderAlerts();
   }
 }
@@ -762,7 +777,8 @@ function updateAge(val){
   document.getElementById('age-val').textContent = val + '%';
   if(currentBasin){
     renderRiskCard();
-    renderZoneList();
+    renderDischargeChart();
+    renderRiskSummaryCard();
     renderAlerts();
   }
 }
