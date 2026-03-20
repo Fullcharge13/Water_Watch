@@ -418,49 +418,6 @@ const WATER_DATA = {
   ],
 };
 
-// ── 침수 위험 지점 데이터 (시군구별)
-const FLOOD_ZONES_BY_BASIN = {
-  '한강': [
-    {name:'서울 관악구 신림동',   pipe_age:72, elev:'저지대', capacity_ratio:88},
-    {name:'서울 강서구 화곡동',   pipe_age:65, elev:'저지대', capacity_ratio:82},
-    {name:'서울 도봉구 창동',    pipe_age:58, elev:'중간',   capacity_ratio:74},
-    {name:'경기 부천시 원미구',  pipe_age:61, elev:'저지대', capacity_ratio:79},
-    {name:'서울 중랑구 면목동',  pipe_age:54, elev:'중간',   capacity_ratio:71},
-    {name:'경기 안양시 만안구',  pipe_age:49, elev:'중간',   capacity_ratio:66},
-  ],
-  '낙동강': [
-    {name:'부산 사상구 엄궁동',   pipe_age:68, elev:'저지대', capacity_ratio:91},
-    {name:'부산 사하구 하단동',   pipe_age:71, elev:'저지대', capacity_ratio:87},
-    {name:'경남 창원시 마산합포', pipe_age:62, elev:'해안',   capacity_ratio:80},
-    {name:'대구 달서구 월성동',  pipe_age:55, elev:'중간',   capacity_ratio:73},
-    {name:'경북 구미시 원평동',  pipe_age:48, elev:'중간',   capacity_ratio:67},
-    {name:'부산 강서구 명지동',  pipe_age:44, elev:'저지대', capacity_ratio:63},
-  ],
-  '금강': [
-    {name:'충남 천안시 쌍용동',  pipe_age:59, elev:'중간',   capacity_ratio:76},
-    {name:'대전 대덕구 대화동',  pipe_age:64, elev:'저지대', capacity_ratio:83},
-    {name:'충남 아산시 온양동',  pipe_age:51, elev:'중간',   capacity_ratio:70},
-    {name:'전북 군산시 조촌동',  pipe_age:67, elev:'저지대', capacity_ratio:85},
-    {name:'충북 청주시 사직동',  pipe_age:53, elev:'중간',   capacity_ratio:72},
-    {name:'전북 전주시 팔달동',  pipe_age:46, elev:'중간',   capacity_ratio:64},
-  ],
-  '영산강': [
-    {name:'광주 북구 운암동',    pipe_age:69, elev:'저지대', capacity_ratio:89},
-    {name:'전남 목포시 원산동',  pipe_age:73, elev:'해안',   capacity_ratio:92},
-    {name:'광주 광산구 월계동',  pipe_age:58, elev:'중간',   capacity_ratio:75},
-    {name:'전남 나주시 금계동',  pipe_age:52, elev:'저지대', capacity_ratio:71},
-    {name:'전남 담양군 담양읍',  pipe_age:44, elev:'중간',   capacity_ratio:62},
-    {name:'전남 장성군 장성읍',  pipe_age:41, elev:'중간',   capacity_ratio:58},
-  ],
-  '섬진강': [
-    {name:'전남 순천시 향동',    pipe_age:48, elev:'중간',   capacity_ratio:65},
-    {name:'전남 광양시 광양읍',  pipe_age:44, elev:'해안',   capacity_ratio:60},
-    {name:'전남 구례군 구례읍',  pipe_age:55, elev:'저지대', capacity_ratio:68},
-    {name:'전남 곡성군 곡성읍',  pipe_age:49, elev:'중간',   capacity_ratio:63},
-    {name:'경남 하동군 하동읍',  pipe_age:52, elev:'저지대', capacity_ratio:67},
-    {name:'경남 남해군 남해읍',  pipe_age:43, elev:'해안',   capacity_ratio:59},
-  ],
-};
 
 let currentBasin = null;
 let rainSim = 12, ageSim = 45;
@@ -644,11 +601,6 @@ function renderWQGrid(){
   }).join('');
 }
 
-// ── 침수 대시보드 ──
-function renderFloodDash(){
-  renderRainBarChart();
-  renderZoneList();
-}
 
 function renderRainBarChart(){
   const hours = Array.from({length:12},(_,i)=>i);
@@ -675,32 +627,6 @@ function renderRainBarChart(){
   }).join('');
 }
 
-function renderZoneList(){
-  const zones = FLOOD_ZONES_BY_BASIN[currentBasin];
-  const rain_bonus = Math.round(rainSim/50*20);
-  const age_bonus  = Math.round(ageSim/100*10);
-  const sorted = [...zones]
-    .map(z=>({...z, score: Math.min(z.capacity_ratio + rain_bonus + age_bonus, 99)}))
-    .sort((a,b)=>b.score-a.score);
-
-  document.getElementById('zone-list').innerHTML = sorted.map((z,i)=>{
-    let lvColor='var(--muted)', lvLabel='정상', lvBg='rgba(60,80,100,.2)';
-    if(z.score>=80){lvColor='var(--danger)';lvLabel='위험';lvBg='rgba(255,59,92,.15)'}
-    else if(z.score>=65){lvColor='var(--warn)';lvLabel='주의';lvBg='rgba(255,140,66,.12)'}
-    else if(z.score>=50){lvColor='#f5c400';lvLabel='관찰';lvBg='rgba(245,196,0,.1)'}
-    return `<div class="zone-row">
-      <div class="zone-rank">${i+1}</div>
-      <div>
-        <div class="zone-name">${z.name}</div>
-        <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">
-          관로노후 ${z.pipe_age}년 · ${z.elev}</div>
-      </div>
-      <div class="zone-bar"><div class="zone-bar-fill" style="width:${z.score}%;background:${lvColor}"></div></div>
-      <div class="zone-risk" style="color:${lvColor}">${z.score}%</div>
-      <div class="zone-level" style="background:${lvBg};color:${lvColor};border:1px solid ${lvColor}44">${lvLabel}</div>
-    </div>`;
-  }).join('');
-}
 
 // ── 슬라이더 ──
 function updateFlood(val){
