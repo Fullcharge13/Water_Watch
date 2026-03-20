@@ -1,6 +1,6 @@
 # 💧 Water_Watch
 
-> 전국 하수 경로 탐색 · 수질 등급 시각화 · 침수 위험 알림 통합 플랫폼
+> 수질 등급 시각화 · 침수 위험 알림 통합 플랫폼
 > 순수 정적 HTML — 서버 없음 · 호스팅 비용 $0
 
 [![Live Demo](https://img.shields.io/badge/Live-GitHub%20Pages-00e5c0?style=flat-square&logo=github)](https://Fullcharge13.github.io/Water_Watch)
@@ -25,7 +25,6 @@
 | 수질·침수 통합 모니터링 대시보드 | `index.html` | 강수량 실시간 연동 | $0 |
 | 5대 수계 수질 등급 시각화 (BOD/DO/TN/TP) | `index.html` | 공공 기준값 시뮬레이션 | $0 |
 | 침수 위험 분석 (강수량 × 관로 노후도) | `index.html` | 강수량 실시간 연동 | $0 |
-| 전국 픽셀 도트 맵 (17개 시도) | `sewage_national.html` | - | $0 |
 | 서울 하수 경로 탐색기 | `seoul_sewage_mvp.html` | - | $0 |
 
 ---
@@ -154,7 +153,6 @@ python -m http.server 8000
 Water_Watch/
 ├── index.html               # 메인 대시보드 — 수질·침수 통합 모니터링
 ├── water_dashboard.html     # 수질 등급 + 침수 위험 대시보드 (구버전)
-├── sewage_national.html     # 전국 픽셀 도트 맵 (17개 시도)
 ├── seoul_sewage_mvp.html    # 서울 특화 하수 경로 탐색기
 ├── src/
 │   └── main.py              # Python 데이터 검증 스크립트
@@ -173,7 +171,6 @@ Water_Watch/
 
 - **Frontend** : 순수 HTML5 / CSS3 / Vanilla JS (프레임워크 없음)
 - **강수량 API** : Open-Meteo Forecast API (무료, API 키 불필요, CORS 허용)
-- **지도 렌더링** : Canvas API 자체 픽셀 도트 드로잉
 - **배포** : GitHub Pages (정적 파일, 무료)
 
 ---
@@ -183,7 +180,6 @@ Water_Watch/
 - **5대 수계** : 한강 · 낙동강 · 금강 · 영산강 · 섬진강
 - 수계별 **6개 측정 지점** (총 30개소)
 - 수계별 **6개 침수 위험 지점** (총 30개소)
-- 전국 **17개 시도** 픽셀 맵 (`sewage_national.html`)
 
 ---
 
