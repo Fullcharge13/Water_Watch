@@ -359,6 +359,14 @@ const GRADE_CRITERIA = [
   {grade:'VI', label:'매우나쁨', bod_max:999,color:'#ff3b5c', bg:'rgba(255,59,92,.12)'},
 ];
 
+const BASIN_COORDS = {
+  '한강':   {lat: 37.57, lon: 126.98},
+  '낙동강': {lat: 35.18, lon: 129.08},
+  '금강':   {lat: 36.35, lon: 127.38},
+  '영산강': {lat: 35.16, lon: 126.85},
+  '섬진강': {lat: 34.95, lon: 127.49},
+};
+
 function getGrade(bod){
   return GRADE_CRITERIA.find(g => bod <= g.bod_max) || GRADE_CRITERIA.at(-1);
 }
@@ -453,6 +461,7 @@ const FLOOD_ZONES_BY_BASIN = {
 
 let currentBasin = null;
 let rainSim = 12, ageSim = 45;
+const floodCache = {};
 
 // ── 시계 ──
 function updateClock(){
@@ -462,6 +471,12 @@ function updateClock(){
 }
 setInterval(updateClock, 1000);
 updateClock();
+
+function setLiveDotColor(state) {
+  const dot = document.querySelector('.live-dot');
+  if (!dot) return;
+  dot.style.background = state === 'orange' ? 'var(--warn)' : 'var(--ok)';
+}
 
 // ── 탭 전환 ──
 function switchTab(id, btn){
