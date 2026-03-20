@@ -184,26 +184,23 @@ select.px-sel:focus{border-color:var(--c1)}
   clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%)}
 .chart-title{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:12px}
 .bar-chart{display:flex;align-items:flex-end;gap:4px;height:80px}
+/* 하천 유량 패널 */
+.discharge-chart-wrap{background:var(--panel);border:1px solid var(--border);padding:16px;
+  clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%)}
+.discharge-summary{background:var(--panel);border:1px solid var(--border);padding:16px;
+  clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);
+  display:flex;flex-direction:column;gap:10px}
+.ds-row{display:flex;justify-content:space-between;align-items:center;font-size:12px}
+.ds-key{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.5px}
+.ds-val{font-family:'Space Mono',monospace;font-size:14px;font-weight:700}
+.ds-badge{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;
+  padding:2px 8px;letter-spacing:.5px}
 .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
 .bar-fill-wrap{flex:1;display:flex;align-items:flex-end;width:100%}
 .bar-fill{width:100%;border-radius:2px 2px 0 0;transition:height .8s;min-height:2px}
 .bar-lbl{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted)}
 .bar-val{font-family:'Space Mono',monospace;font-size:7px}
 
-/* 위험 지역 리스트 */
-.zone-list{background:var(--panel);border:1px solid var(--border);padding:16px;
-  clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%)}
-.zone-row{
-  display:flex;align-items:center;gap:10px;padding:8px 0;
-  border-bottom:1px solid var(--border);font-size:12px;
-}
-.zone-row:last-child{border:none}
-.zone-rank{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);width:20px;flex-shrink:0}
-.zone-name{flex:1;font-weight:500}
-.zone-bar{flex:1;height:4px;background:var(--bg);border-radius:2px;overflow:hidden}
-.zone-bar-fill{height:4px;border-radius:2px}
-.zone-risk{font-family:'Space Mono',monospace;font-size:11px;font-weight:700;min-width:40px;text-align:right}
-.zone-level{font-size:9px;padding:2px 7px;border-radius:2px;font-family:'Space Mono',monospace;letter-spacing:.5px;flex-shrink:0}
 
 /* ── 반응형 슬라이더 컨트롤 ── */
 .ctrl-panel{
